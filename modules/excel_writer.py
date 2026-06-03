@@ -178,19 +178,24 @@ def genera_excel(dati: dict,
         kpi = dati["kpi"]
         num_fmt = _num_fmt(divisore)
         rows_kpi = [
-            ("NAV Totale",   kpi.get("nav"),           kpi.get("nav_prev"), kpi.get("var_nav")),
-            ("N° Titoli",    kpi.get("n_titoli"),       None,                None),
-            ("P&L Totale",   kpi.get("pl_totale"),      None,                None),
-            ("Proventi",     kpi.get("proventi"),       None,                None),
-            ("Rendimento %", kpi.get("rendimento_%"),   None,                None),
+            ("NAV Totale",   kpi.get("nav"),         kpi.get("nav_prev"), kpi.get("var_nav")),
+            ("N° Titoli",    kpi.get("n_titoli"),     None,                None),
+            ("P&L Totale",   kpi.get("pl_totale"),    None,                None),
+            ("Proventi",     kpi.get("proventi"),     None,                None),
+            ("Rendimento %", kpi.get("rendimento_%"), None,                None),
         ]
         for i, (label, n, n1, var) in enumerate(rows_kpi, 7):
             ws_r.row_dimensions[i].height = 12
             ws_r.cell(row=i, column=2, value=label).font = Font(name=ARIAL, size=FS)
             ws_r.cell(row=i, column=2).border = _border()
             for col_idx, val in enumerate([n, n1, var], 3):
-                cell = ws_r.cell(row=i, column=col_idx,
-                                  value=_div(val, divisore) if val is not None else None)
+                display = None
+                if val is not None:
+                    if label in ("N° Titoli", "Rendimento %"):
+                        display = val
+                    else:
+                        display = _div(val, divisore)
+                cell = ws_r.cell(row=i, column=col_idx, value=display)
                 cell.font      = Font(name=ARIAL, size=FS)
                 cell.border    = _border()
                 cell.alignment = Alignment(horizontal="right")
