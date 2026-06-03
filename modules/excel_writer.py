@@ -154,9 +154,9 @@ def genera_excel(dati: dict,
     ws_r.sheet_view.showGridLines = False
 
     ws_r.cell(row=2, column=2, value="kpmg").font = Font(
-        name="KPMG Logo", size=FS, color=NERO)
+        name="KPMG Logo", size=FS_Titoli, color=KPMG_BLU)
     ws_r.cell(row=3, column=2, value=nome_portafoglio).font = Font(
-        name="KPMG Bold", size=FS, color=NERO)
+        name="KPMG Bold", size=FS_Titoli, color=KPMG_BLU)
 
     ws_r.merge_cells("B5:E5")
     c = ws_r.cell(row=5, column=2,
