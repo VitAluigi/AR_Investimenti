@@ -16,9 +16,6 @@ SINONIMI = {
     # ---- BOOK VALUE (valore contabile N) ----
     #"valore carico LC iniziale": "book_value_prev",
     "valore carico lc finale":   "book_value",
-    "valore carico finale":      "book_value",
-    "valore carico lc":          "book_value",
-    "book value finale":         "book_value",
     "total book value LC":       "book_value",
 
     # ---- FAIR VALUE (valore di mercato N) ----
@@ -154,9 +151,7 @@ SINONIMI = {
 # ---------------------------------------------------------------------------
 SINONIMI_PREV = {
     # book_value_prev
-    #"valore carico LC iniziale": "book_value_prev",
-    #"book value n-1":            "book_value_prev",
-    #"valore carico n-1":         "book_value_prev",
+    "valore carico LC iniziale": "book_value_prev",
     # fair_value_prev
     "valore LC Mercato Iniziale":  "fair_value_prev",
     #"fair value n-1":              "fair_value_prev",
