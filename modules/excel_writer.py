@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/excel_writer.py - Generazione Excel formattato
+# modules/excel_writer.py — Generazione Excel formattato
 # =============================================================================
 
 from openpyxl import Workbook
@@ -58,7 +58,9 @@ def _is_pl_col(col_name):
     n = str(col_name).lower()
     return any(k in n for k in [
         "realizzo", "valutazione", "variazione", "var %",
-        "differenza", "diff %", "pl totale"
+        "differenza", "diff %", "pl totale",
+        "p/l",      # P/L Titolo LC, P/L Cambio LC, P/L Totale LC
+        "importo",  # Importo LC (negativo = vendita)
     ])
 
 
@@ -116,7 +118,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
             if isinstance(display_val, (int, float)) and not isinstance(display_val, bool):
-                cell.number_format = '0.00"%"' if is_perc else num_fmt
+                cell.number_format = '0.00' if is_perc else num_fmt
                 cell.alignment     = Alignment(horizontal="right")
                 if _is_pl_col(col_name):
                     if display_val > 0:
@@ -217,6 +219,7 @@ def genera_excel(dati: dict,
         ("esposizione_valutaria",    "Valute",         "Esposizione Valutaria"),
         ("esposizione_settoriale",   "Settori",        "Esposizione Settoriale"),
         ("confronto_bv_fv",         "BV_vs_FV",       "Book Value vs Fair Value per Asset Class"),
+        ("top_operazioni",          "Top20_Operazioni","Top 20 Operazioni di Periodo"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
