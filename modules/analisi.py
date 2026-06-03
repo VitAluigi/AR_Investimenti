@@ -364,3 +364,84 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     }
     df = df.rename(columns=etichette)
     return df
+
+
+# ---------------------------------------------------------------------------
+# 7. FUNZIONI SHIP — unione N / N-1
+# ---------------------------------------------------------------------------
+
+def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
+    """Legge la data dominante di uno sheet (moda della colonna data)."""
+    if col_data not in df.columns:
+        return None
+    try:
+        return pd.to_datetime(df[col_data], dayfirst=True, errors="coerce").dropna().mode()[0]
+    except Exception:
+        return None
+
+
+def unisci_ship_patrimoniale(df_n: pd.DataFrame,
+                              df_n1: pd.DataFrame) -> pd.DataFrame:
+    """
+    Unisce i due Inventory SHIP (N e N-1).
+    Determina quale è N e quale N-1 dalla colonna 'date' (o 'Date').
+    Le colonne di N-1 vengono rinominate con suffisso _prev.
+    """
+    # Trova colonna data nei due df
+    col_data = next((c for c in df_n.columns if c.lower() == "date"), None)
+
+    data_a = _data_sheet(df_n,  col_data) if col_data else None
+    data_b = _data_sheet(df_n1, col_data) if col_data else None
+
+    # Assegna N al più recente
+    if data_a and data_b and data_b > data_a:
+        df_n, df_n1 = df_n1, df_n
+
+    # Colonne numeriche da suffissare con _prev
+    cols_numeriche = [c for c in df_n1.columns
+                      if df_n1[c].dtype in ("float64", "int64")
+                      and c in df_n.columns]
+    key_cols = ["isin", "asset_class", "tipo_emittente", "rating",
+                "paese", "valuta", "settore", "descrizione",
+                "valuation_area", "company_name", "portfolio_name",
+                "valuation_class", "bond_classification"]
+    key_cols = [c for c in key_cols if c in df_n1.columns]
+
+    df_prev = df_n1[key_cols + cols_numeriche].copy()
+    rename  = {c: f"{c}_prev" for c in cols_numeriche}
+    df_prev = df_prev.rename(columns=rename)
+
+    merge_on = [c for c in key_cols if c in df_n.columns]
+    if merge_on:
+        return df_n.merge(df_prev, on=merge_on, how="left")
+    return df_n
+
+
+def unisci_ship_economico(df_eco_n: pd.DataFrame,
+                           df_eco_n1: pd.DataFrame) -> pd.DataFrame:
+    """
+    Unisce i due Income SHIP (N e N-1).
+    Determina N/N-1 dalla colonna 'date to'.
+    Le colonne economiche di N-1 vengono rinominate con _prev.
+    """
+    col_data = next((c for c in df_eco_n.columns
+                     if c.lower() in ("date to", "dateto", "date_to")), None)
+
+    data_a = _data_sheet(df_eco_n,  col_data) if col_data else None
+    data_b = _data_sheet(df_eco_n1, col_data) if col_data else None
+
+    if data_a and data_b and data_b > data_a:
+        df_eco_n, df_eco_n1 = df_eco_n1, df_eco_n
+
+    eco_canonici = ["cedola", "dividendi", "pl_realizzo",
+                    "pl_valutazione", "pl_totale_db"]
+    cols_n1 = [c for c in eco_canonici if c in df_eco_n1.columns]
+    key_cols = [c for c in ["isin", "asset_class"] if c in df_eco_n1.columns]
+
+    df_prev = df_eco_n1[key_cols + cols_n1].copy()
+    rename  = {c: f"{c}_prev" for c in cols_n1}
+    df_prev = df_prev.rename(columns=rename)
+
+    if key_cols and key_cols[0] in df_eco_n.columns:
+        return df_eco_n.merge(df_prev, on=key_cols, how="left")
+    return df_eco_n
