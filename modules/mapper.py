@@ -20,12 +20,6 @@ SINONIMI = {
     "book value finale":         "book_value",
     "total book value LC":       "book_value",
 
-    # ---- BOOK VALUE PREV (valore contabile N-1) ----
-    "valore carico lc iniziale": "book_value_prev",
-    "valore carico iniziale":    "book_value_prev",
-    "book value iniziale":       "book_value_prev",
-    "nominale iniziale":         "book_value_prev",
-
     # ---- FAIR VALUE (valore di mercato N) ----
     "valore lc mercato finale":  "fair_value",
     "valore mercato finale":     "fair_value",
@@ -37,18 +31,6 @@ SINONIMI = {
     "valore corrente":           "fair_value",
     "market value":              "fair_value",
     "controvalore":              "fair_value",
-
-    # ---- FAIR VALUR PREV (valore di mercato N-1) ----
-    "valore lc mercato iniziale":  "fair_value_prev",
-    "valore mercato iniziale":     "fair_value_prev",
-    "prezzo iniziale":             "fair_value_prev",
-    "fair value iniziale":         "fair_value_prev",
-    "valore di mercato iniziale":  "fair_value_prev",
-    "mtm iniziale":                "fair_value_prev",
-    "mark to market iniziale":     "fair_value_prev",
-    "valore corrente iniziale":    "fair_value_prev",
-    "market valueiniziale":        "fair_value_prev",
-    "controvalore iniziale":       "fair_value_prev",
     
     # ---- FAIR VALUE LEVEL ----
     "fair value level":          "fair_value_level",
@@ -173,12 +155,26 @@ SINONIMI_PREV = {
     "book value n-1":            "book_value_prev",
     "valore carico n-1":         "book_value_prev",
     "mtm n-1":                   "book_value_prev",
+    "valore carico lc iniziale": "book_value_prev",
+    "valore carico iniziale":    "book_value_prev",
+    "book value iniziale":       "book_value_prev",
+    "nominale iniziale":         "book_value_prev",
     # fair_value_prev
     "fair value n-1":            "fair_value_prev",
     "valore mercato n-1":        "fair_value_prev",
     "valore lc mercato n-1":     "fair_value_prev",
     "controvalore n-1":          "fair_value_prev",
     "valore di mercato n-1":     "fair_value_prev",
+    "valore lc mercato iniziale":  "fair_value_prev",
+    "valore mercato iniziale":     "fair_value_prev",
+    "prezzo iniziale":             "fair_value_prev",
+    "fair value iniziale":         "fair_value_prev",
+    "valore di mercato iniziale":  "fair_value_prev",
+    "mtm iniziale":                "fair_value_prev",
+    "mark to market iniziale":     "fair_value_prev",
+    "valore corrente iniziale":    "fair_value_prev",
+    "market valueiniziale":        "fair_value_prev",
+    "controvalore iniziale":       "fair_value_prev",
     # cedola_prev
     "cedola/interessi n-1":      "cedola_prev",
     "cedola n-1":                "cedola_prev",
