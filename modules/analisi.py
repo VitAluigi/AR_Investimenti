@@ -57,13 +57,13 @@ def _build_confronto(df_base: pd.DataFrame,
                      col_n1: str = None) -> pd.DataFrame:
     label_display = col_label.replace("_", " ").title()
 
-    # Aggrega N — usa col_label originale per il groupby
+    # Aggrega N - usa col_label originale per il groupby
     agg = df_base.groupby(col_label, dropna=False)[col_n].sum().reset_index()
     agg.columns = [label_display, "N"]
     tot_n = agg["N"].sum()
     agg["Peso %"] = (agg["N"] / tot_n * 100).round(2) if tot_n else 0
 
-    # Aggrega N-1 — usa col_label originale per il groupby
+    # Aggrega N-1 - usa col_label originale per il groupby
     if col_n1 and col_n1 in df_base.columns:
         agg_prev = df_base.groupby(col_label, dropna=False)[col_n1].sum().reset_index()
         agg_prev.columns = [label_display, "N-1"]
@@ -119,8 +119,8 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
 
     result["Totale N"] = pivot_n.sum(axis=1)
     result.index.name  = "Asset Class"
-    result             = result.reset_index()
-    tot                = result.select_dtypes("number").sum()
+    result = result.reset_index()
+    tot = result.select_dtypes("number").sum()
     tot["Asset Class"] = "Totale"
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
@@ -204,7 +204,6 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
         tot["Var %"] = _var_pct(tot["Totale N"], tot["Totale N-1"])
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
-
 # ---------------------------------------------------------------------------
 # 5. ANALISI AGGIUNTIVE
 # ---------------------------------------------------------------------------
@@ -242,29 +241,26 @@ def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
         "asset_class": "Asset Class",
     })
 
-
 def esposizione_valutaria(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "valuta", "fair_value", "fair_value_prev")
-
 
 def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "settore", "fair_value", "fair_value_prev")
 
-
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
-    nav      = _sum(df, "fair_value")
+    nav = _sum(df, "fair_value")
     nav_prev = _sum(df, "fair_value_prev")
     n_titoli = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
-    pl_tot   = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
-    proventi = _sum(df, "cedola")      + _sum(df, "dividendi")
+    pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
+    proventi = _sum(df, "cedola") + _sum(df, "dividendi")
 
     return {
-        "nav":          nav,
-        "nav_prev":     nav_prev,
-        "n_titoli":     n_titoli,
-        "pl_totale":    pl_tot,
-        "proventi":     proventi,
+        "nav": nav,
+        "nav_prev": nav_prev,
+        "n_titoli": n_titoli,
+        "pl_totale": pl_tot,
+        "proventi": proventi,
         "rendimento_%": round(pl_tot / nav * 100, 2) if nav > 0 else None,
-        "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
-        "var_nav_%":    _var_pct(nav, nav_prev),
+        "var_nav": round(nav - nav_prev, 2) if nav_prev else None,
+        "var_nav_%": _var_pct(nav, nav_prev),
     }
