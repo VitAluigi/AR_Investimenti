@@ -23,7 +23,7 @@ SINONIMI = {
 
     # ---- FAIR VALUE (valore di mercato N) ----
     "valore lc mercato finale":   "fair_value",
-    #"valore lc mercato iniziale": "fair_value_prev",
+    "valore lc mercato iniziale": "fair_value_prev",
     "valore mercato finale":      "fair_value",
     "prezzo finale":              "fair_value",
     "fair value":                 "fair_value",
