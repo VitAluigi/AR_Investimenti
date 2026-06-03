@@ -145,13 +145,13 @@ SINONIMI = {
 }
 
 # ---------------------------------------------------------------------------
-# Dizionario sinonimi — CAMPI N-1 (contengono "n-1" nel nome colonna)
+# Dizionario sinonimi — CAMPI N-1
 # ---------------------------------------------------------------------------
 SINONIMI_PREV = {
     # book_value_prev
-    "valore carico LC iniziale": "book_value_prev",
+    "valore carico lc iniziale": "book_value_prev",
     # fair_value_prev
-    "valore LC Mercato Iniziale":  "fair_value_prev",
+    "valore lc Mercato Iniziale":  "fair_value_prev",
     # cedola_prev
     "cedola/interessi n-1":      "cedola_prev",
     "cedola n-1":                "cedola_prev",
