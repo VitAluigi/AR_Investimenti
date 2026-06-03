@@ -235,6 +235,34 @@ def genera_excel(dati: dict,
                                divisore=divisore)
 
     # ------------------------------------------------------------------ #
+    # 98 TRANSACTION REPORT COMPLETO                                       #
+    # ------------------------------------------------------------------ #
+    if "transaction_report" in dati and dati["transaction_report"] is not None:
+        ws_tx = wb.create_sheet(title="98_TransactionReport")
+        ws_tx.sheet_view.showGridLines = False
+        df_tx = dati["transaction_report"]
+        n_tx  = len(df_tx.columns)
+        n_tx_rows = len(df_tx)
+    
+        for c_idx, col_name in enumerate(df_tx.columns, 1):
+            cell = ws_tx.cell(row=1, column=c_idx, value=col_name)
+            cell.font      = Font(name=ARIAL, size=FS, bold=True)
+            cell.border    = _border_header(c_idx, 1, n_tx)
+            cell.alignment = Alignment(horizontal="center", wrap_text=True)
+            ws_tx.column_dimensions[get_column_letter(c_idx)].width = 16
+        ws_tx.row_dimensions[1].height = 12
+        ws_tx.auto_filter.ref = f"A1:{get_column_letter(n_tx)}1"
+        ws_tx.freeze_panes   = "A2"
+    
+        for r_idx, row in enumerate(df_tx.itertuples(index=False), 2):
+            is_last = (r_idx == 1 + n_tx_rows)
+            ws_tx.row_dimensions[r_idx].height = 12
+            for c_idx, val in enumerate(row, 1):
+                cell        = ws_tx.cell(row=r_idx, column=c_idx, value=val)
+                cell.font   = Font(name=ARIAL, size=FS)
+                cell.border = _border_analisi(c_idx, 1, n_tx, is_last)
+
+    # ------------------------------------------------------------------ #
     # 99 DETTAGLIO COMPLETO                                                #
     # ------------------------------------------------------------------ #
     if "dettaglio" in dati and dati["dettaglio"] is not None:
