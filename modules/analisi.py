@@ -1,11 +1,10 @@
 # =============================================================================
-# modules/analisi.py - Capability discovery e calcoli finanziari
+# modules/analisi.py — Capability discovery e calcoli finanziari
 # =============================================================================
 
 import pandas as pd
 import numpy as np
 from config import ANALISI_REQUISITI
-
 
 # ---------------------------------------------------------------------------
 # 1. CAPABILITY DISCOVERY
@@ -96,7 +95,7 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
             index="asset_class", columns="fair_value_level",
             values=col_val, aggfunc="sum", fill_value=0,
         )
-        p.columns = [f"FV {c} {suffix}" for c in p.columns]
+        p.columns = [f"Level {c} {suffix}" for c in p.columns]
         return p
 
     pivot_n = _pivot("book_value", "N")
@@ -214,7 +213,7 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 5. ANALISI AGGIUNTIVE
+# 5. ANALISI AGGIUNTIVE — PORTAFOGLIO
 # ---------------------------------------------------------------------------
 
 def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
@@ -274,3 +273,94 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
         "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
         "var_nav_%":    _var_pct(nav, nav_prev),
     }
+
+
+# ---------------------------------------------------------------------------
+# 6. TOP OPERAZIONI — TRANSACTION REPORT
+# ---------------------------------------------------------------------------
+
+# Mappa colonne Transaction Report → nomi canonici interni
+_TX_COL_MAP = {
+    "position value date":                "data",
+    "business transaction category name": "tipo",
+    "isin code":                          "isin",
+    "security id name":                   "descrizione",
+    "product category name":              "asset_class",
+    "nominal/units":                      "nominale",
+    "transaction amount lc":              "importo_lc",
+    "transaction amount pc":              "importo_pc",
+    "realised gain loss security lc":     "pl_titolo_lc",
+    "realised gain loss security pc":     "pl_titolo_pc",
+    "realised gain loss fx lc":           "pl_cambio_lc",
+    "realised gain loss lc":              "pl_totale_lc",
+    "issue currency":                     "valuta",
+    "counterparty name":                  "controparte",
+    "operation price pc":                 "prezzo",
+}
+
+_TX_TIPI_RILEVANTI = {"sale", "purchase"}
+
+
+def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
+    """
+    Legge il Transaction Report grezzo, seleziona Sale e Purchase,
+    restituisce le top N per valore assoluto di Transaction Amount LC.
+    """
+    if df_tx is None or df_tx.empty:
+        return None
+
+    # Normalizza nomi colonne
+    df = df_tx.copy()
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Rinomina con mappa (solo colonne presenti)
+    rename = {k: v for k, v in _TX_COL_MAP.items() if k in df.columns}
+    df = df.rename(columns=rename)
+
+    # Filtra Sale e Purchase
+    if "tipo" not in df.columns:
+        return None
+    df = df[df["tipo"].str.strip().str.lower().isin(_TX_TIPI_RILEVANTI)].copy()
+    if df.empty:
+        return None
+
+    # Ordina per |importo_lc| decrescente
+    if "importo_lc" in df.columns:
+        df["_abs"] = df["importo_lc"].abs()
+        df = df.sort_values("_abs", ascending=False).drop(columns=["_abs"])
+
+    df = df.head(n).reset_index(drop=True)
+    df.index = df.index + 1
+    df.index.name = "Rank"
+
+    # Seleziona colonne di output nell'ordine desiderato
+    cols_out = [c for c in [
+        "data", "tipo", "isin", "descrizione", "asset_class",
+        "valuta", "nominale", "prezzo",
+        "importo_lc", "importo_pc",
+        "pl_titolo_lc", "pl_titolo_pc",
+        "pl_cambio_lc", "pl_totale_lc",
+        "controparte",
+    ] if c in df.columns]
+    df = df[cols_out]
+
+    # Etichette leggibili per Excel
+    etichette = {
+        "data":        "Data",
+        "tipo":        "Tipo",
+        "isin":        "ISIN",
+        "descrizione": "Titolo",
+        "asset_class": "Asset Class",
+        "valuta":      "Valuta",
+        "nominale":    "Nominale",
+        "prezzo":      "Prezzo",
+        "importo_lc":  "Importo LC",
+        "importo_pc":  "Importo PC",
+        "pl_titolo_lc":"P/L Titolo LC",
+        "pl_titolo_pc":"P/L Titolo PC",
+        "pl_cambio_lc":"P/L Cambio LC",
+        "pl_totale_lc":"P/L Totale LC",
+        "controparte": "Controparte",
+    }
+    df = df.rename(columns=etichette)
+    return df
