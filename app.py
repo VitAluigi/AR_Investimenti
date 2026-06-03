@@ -21,33 +21,6 @@ st.markdown("""
 <style>
 .ok  { color: #28a745; font-weight:bold; }
 .no  { color: #dc3545; }
-
-/* Sfondo app KPMG blu */
-.stApp {
-    background-color: rgb(0, 51, 141);
-}
-
-/* Testo bianco su sfondo blu */
-.stApp, .stApp p, .stApp label, .stApp h1, .stApp h2, .stApp h3 {
-    color: white;
-}
-
-/* Sidebar con sfondo leggermente più scuro */
-[data-testid="stSidebar"] {
-    background-color: rgb(0, 40, 110);
-}
-
-/* Bottoni bianchi */
-.stButton > button {
-    background-color: white;
-    color: rgb(0, 51, 141);
-    font-weight: bold;
-}
-
-/* Metriche testo bianco */
-[data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
-    color: white;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -72,7 +45,7 @@ with st.sidebar:
     divisore = divisori[unita]
 
     st.divider()
-    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate dal file.")
+    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate dal tuo file.")
 
 # ---------------------------------------------------------------------------
 # UPLOAD FILE
@@ -94,9 +67,9 @@ with st.spinner("Analisi del file in corso..."):
         tmp.write(uploaded_file.read())
         tmp_path = tmp.name
 
-    df_raw = leggi_portafoglio(tmp_path)
-    mapping = mappa_colonne(df_raw.columns.tolist())
-    info = report_mapping(mapping)
+    df_raw, df_tx = leggi_portafoglio(tmp_path)
+    mapping   = mappa_colonne(df_raw.columns.tolist())
+    info      = report_mapping(mapping)
     df_mapped = applica_mapping(df_raw, mapping)
     df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
 
@@ -121,7 +94,7 @@ with st.expander("Dettaglio mapping colonne"):
     ]
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
 
-with st.expander("Correggi mapping manuale (opzionale)"):
+with st.expander("✏️ Correggi mapping manuale (opzionale)"):
     from config import SCHEMA_CANONICO
     non_mappate = info["non_mappate"]
     if non_mappate:
@@ -149,24 +122,19 @@ disponibili = scopri_analisi(df_mapped)
 cols = st.columns(3)
 for i, (nome, attiva) in enumerate(disponibili.items()):
     with cols[i % 3]:
-        colore_bg  = "#ffffff" if attiva else "#ffeaea"
-        colore_txt = "rgb(0,51,141)" if attiva else "#dc3545"
-        icona      = "OK" if attiva else "KO"
+        stato  = "OK" if attiva else "KO"
+        colore = "ok" if attiva else "no"
         st.markdown(
-            f"""<div style="
-                background-color:{colore_bg};
-                color:{colore_txt};
-                padding:8px 12px;
-                margin-bottom:6px;
-                border-radius:6px;
-                font-size:13px;
-                font-weight:600;
-            ">{icona} {nome.replace("_", " ").title()}</div>""",
+            f'<span class="{colore}">{stato} {nome.replace("_", " ").title()}</span>',
             unsafe_allow_html=True
         )
 
 n_attive = sum(1 for v in disponibili.values() if v)
 st.caption(f"**{n_attive}/{len(disponibili)}** analisi disponibili con i dati forniti.")
+if df_tx is not None and not df_tx.empty:
+    st.success("Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
+else:
+    st.info("Nessun Transaction Report nel file — sheet Top 20 Operazioni non disponibile.")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 3: KPI
@@ -192,7 +160,7 @@ c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 # ---------------------------------------------------------------------------
 # SEZIONE 4: ANTEPRIMA
 # ---------------------------------------------------------------------------
-with st.expander("Anteprima dati"):
+with st.expander("Anteprima dati (prime 20 righe)"):
     st.dataframe(df_mapped.head(20), use_container_width=True)
 
 # ---------------------------------------------------------------------------
@@ -203,7 +171,7 @@ st.subheader("Genera Report")
 
 if st.button("Genera Excel + Word", type="primary", use_container_width=True):
     with st.spinner("Generazione report in corso..."):
-        dati = calcola_analisi(df_mapped)
+        dati = calcola_analisi(df_mapped, df_tx)
         output_dir = tempfile.mkdtemp()
         path_excel, path_word = genera_output(
             dati, nome_portafoglio, output_dir, unita=unita
