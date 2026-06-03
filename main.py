@@ -16,56 +16,63 @@ from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
                               rating_per_emittente, geografia_governativi,
                               economica_completa, top_holdings,
                               esposizione_valutaria, esposizione_settoriale,
-                              confronto_bv_fv, top_operazioni)
+                              confronto_bv_fv, top_operazioni,
+                              unisci_ship_patrimoniale, unisci_ship_economico)
 from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
 from config import INPUT_DIR, OUTPUT_DIR
 
-TRANSACTION_SHEET_KEYWORDS = ["transaction", "operazioni", "movimenti"]
-
 
 # ---------------------------------------------------------------------------
-# STEP 1: Leggi file Excel — portafoglio + eventuale transaction report
+# STEP 1: Leggi file Excel
 # ---------------------------------------------------------------------------
 
-def leggi_portafoglio(path: str) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+def leggi_portafoglio(path: str):
+    """
+    Rileva il tipo di DB dal numero di sheet:
+      2 sheet → SOFIA:  [Posizioni, Transaction Report]
+      5 sheet → SHIP:   [Inventory N, Inventory N-1, Income N, Income N-1, Transaction Report]
+      altri   → fallback SOFIA (primo sheet = posizioni, ultimo = tx)
+    """
     print(f"[1/5] Lettura file: {path}")
     try:
-        xls = pd.ExcelFile(path)
+        xls         = pd.ExcelFile(path)
         sheet_names = xls.sheet_names
+        n_sheets    = len(sheet_names)
 
-        foglio_ptf = sheet_names[0]
-        foglio_tx  = None
+        def _leggi(sheet):
+            df = pd.read_excel(path, sheet_name=sheet)
+            df = df.dropna(how="all").dropna(axis=1, how="all")
+            df.columns = df.columns.astype(str).str.strip()
+            return df
 
-        for sheet in sheet_names:
-            nome_lower = sheet.lower()
-            if any(k in nome_lower for k in TRANSACTION_SHEET_KEYWORDS):
-                foglio_tx = sheet
-            else:
-                df_temp = pd.read_excel(path, sheet_name=sheet, nrows=3)
-                df_curr = pd.read_excel(path, sheet_name=foglio_ptf, nrows=3)
-                if len(df_temp.columns) > len(df_curr.columns):
-                    foglio_ptf = sheet
+        if n_sheets == 2:
+            # ── SOFIA ──────────────────────────────────────────────────────
+            print(f"    → DB SOFIA ({sheet_names})")
+            df_ptf = _leggi(sheet_names[0])
+            df_tx  = _leggi(sheet_names[1])
+            print(f"    → Posizioni: {len(df_ptf)} righe | Transaction Report: {len(df_tx)} righe")
+            return "sofia", df_ptf, None, None, df_tx
 
-        if foglio_tx:
-            print(f"    → Foglio portafoglio: '{foglio_ptf}', Transaction Report: '{foglio_tx}'")
+        elif n_sheets == 5:
+            # ── SHIP ───────────────────────────────────────────────────────
+            print(f"    → DB SHIP ({sheet_names})")
+            df_inv_n  = _leggi(sheet_names[0])
+            df_inv_n1 = _leggi(sheet_names[1])
+            df_inc_n  = _leggi(sheet_names[2])
+            df_inc_n1 = _leggi(sheet_names[3])
+            df_tx     = _leggi(sheet_names[4])
+            print(f"    → Inventory N: {len(df_inv_n)} | Inventory N-1: {len(df_inv_n1)} | "
+                  f"Income N: {len(df_inc_n)} | Income N-1: {len(df_inc_n1)} | "
+                  f"Transaction: {len(df_tx)} righe")
+            return "ship", df_inv_n, df_inv_n1, (df_inc_n, df_inc_n1), df_tx
+
         else:
-            print(f"    → Foglio portafoglio: '{foglio_ptf}' (nessun transaction report trovato)")
-
-        df = pd.read_excel(path, sheet_name=foglio_ptf)
-        df = df.dropna(how="all").dropna(axis=1, how="all")
-        df.columns = df.columns.astype(str).str.strip()
-
-        df_tx = None
-        if foglio_tx:
-            df_tx = pd.read_excel(path, sheet_name=foglio_tx)
-            df_tx = df_tx.dropna(how="all").dropna(axis=1, how="all")
-            df_tx.columns = df_tx.columns.astype(str).str.strip()
-            print(f"    → Portafoglio: {len(df)} righe | Transaction Report: {len(df_tx)} righe")
-        else:
-            print(f"    → Righe: {len(df)}, Colonne: {len(df.columns)}")
-
-        return df, df_tx
+            # ── Fallback ───────────────────────────────────────────────────
+            print(f"    → DB non riconosciuto ({n_sheets} sheet), tratto come SOFIA")
+            df_ptf = _leggi(sheet_names[0])
+            df_tx  = _leggi(sheet_names[-1]) if n_sheets > 1 else None
+            return "sofia", df_ptf, None, None, df_tx
 
     except Exception as e:
         print(f"[ERRORE] Impossibile leggere il file: {e}")
@@ -73,21 +80,17 @@ def leggi_portafoglio(path: str) -> tuple[pd.DataFrame, pd.DataFrame | None]:
 
 
 # ---------------------------------------------------------------------------
-# STEP 2: Mapping colonne portafoglio
+# STEP 2: Mapping colonne
 # ---------------------------------------------------------------------------
 
 def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
-    print(f"[2/5] Mapping colonne...")
-    mapping = mappa_colonne(df.columns.tolist())
-    info    = report_mapping(mapping)
-
+    mapping  = mappa_colonne(df.columns.tolist())
+    info     = report_mapping(mapping)
     print(f"    → Colonne riconosciute: {info['riconosciute']}/{info['totale']}")
     if info["non_mappate"]:
         print(f"    → Non mappate: {info['non_mappate']}")
-
     df_mapped = applica_mapping(df, mapping)
-    df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
-    return df_mapped
+    return df_mapped.loc[:, ~df_mapped.columns.duplicated()]
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +98,20 @@ def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def calcola_analisi(df: pd.DataFrame,
-                    df_tx: pd.DataFrame | None = None) -> dict:
+                    df_tx:    pd.DataFrame | None = None,
+                    filtri:   dict | None = None) -> dict:
+    """
+    filtri: dict opzionale con chiavi 'valuation_area', 'company_name', 'portfolio_name'
+    """
     print(f"[3/5] Calcolo analisi...")
+
+    # Applica filtri se presenti
+    if filtri:
+        for col, valori in filtri.items():
+            if col in df.columns and valori:
+                df = df[df[col].isin(valori)]
+                print(f"    → Filtro '{col}': {valori} → {len(df)} righe")
+
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
 
@@ -136,12 +151,12 @@ def calcola_analisi(df: pd.DataFrame,
             "asset_class" in df.columns):
         dati["confronto_bv_fv"] = confronto_bv_fv(df)
 
-    # Transaction report — indipendente dal mapping portafoglio
+    # Transaction report
     if df_tx is not None and not df_tx.empty:
-        dati["transaction_report"] = df_tx          # grezzo completo → 98_TransactionReport
+        dati["transaction_report"] = df_tx
         df_top_op = top_operazioni(df_tx, n=20)
         if df_top_op is not None and not df_top_op.empty:
-            dati["top_operazioni"] = df_top_op      # top 20 → Top20_Operazioni
+            dati["top_operazioni"] = df_top_op
             print(f"    → Top operazioni: {len(df_top_op)} righe")
 
     dati["dettaglio"] = df
@@ -175,16 +190,51 @@ def genera_output(dati: dict, nome_portafoglio: str,
 
 
 # ---------------------------------------------------------------------------
-# ENTRY POINT
+# ENTRY POINT alto livello
 # ---------------------------------------------------------------------------
 
 def genera_report(path_input: str,
                   nome_portafoglio: str = "Portafoglio",
-                  output_dir: str = OUTPUT_DIR) -> tuple[str, str]:
-    df_raw, df_tx = leggi_portafoglio(path_input)
-    df_mapped     = esegui_mapping(df_raw)
-    dati          = calcola_analisi(df_mapped, df_tx)
+                  output_dir: str = OUTPUT_DIR,
+                  filtri: dict | None = None) -> tuple[str, str]:
+
+    tipo, df_ptf_n, df_ptf_n1, dfs_eco, df_tx = leggi_portafoglio(path_input)
+
+    print(f"[2/5] Mapping colonne...")
+    if tipo == "ship":
+        # Mappa e unisci Inventory N + N-1
+        df_n  = esegui_mapping(df_ptf_n)
+        df_n1 = esegui_mapping(df_ptf_n1)
+        df_mapped = unisci_ship_patrimoniale(df_n, df_n1)
+        # Mappa e unisci Income N + N-1 → aggiunge _prev alle colonne economiche
+        df_inc_n, df_inc_n1 = dfs_eco
+        df_eco_n  = esegui_mapping(df_inc_n)
+        df_eco_n1 = esegui_mapping(df_inc_n1)
+        df_eco    = unisci_ship_economico(df_eco_n, df_eco_n1)
+        # Unisci patrimoni ale + economico sul portafoglio
+        df_mapped = _merge_ptf_eco(df_mapped, df_eco)
+    else:
+        df_mapped = esegui_mapping(df_ptf_n)
+
+    dati = calcola_analisi(df_mapped, df_tx, filtri)
     return genera_output(dati, nome_portafoglio, output_dir)
+
+
+def _merge_ptf_eco(df_ptf: pd.DataFrame,
+                   df_eco: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggiunge le colonne economiche (cedola, pl_realizzo, pl_valutazione
+    e le rispettive _prev) al patrimoniale SHIP aggregandole per isin.
+    """
+    eco_cols = [c for c in df_eco.columns
+                if c in ("isin", "cedola", "cedola_prev",
+                         "pl_realizzo", "pl_realizzo_prev",
+                         "pl_valutazione", "pl_valutazione_prev",
+                         "pl_totale_db", "pl_totale_db_prev")]
+    if "isin" not in df_ptf.columns or "isin" not in df_eco.columns:
+        return df_ptf
+    df_eco_agg = df_eco[eco_cols].groupby("isin", as_index=False).sum()
+    return df_ptf.merge(df_eco_agg, on="isin", how="left")
 
 
 if __name__ == "__main__":
