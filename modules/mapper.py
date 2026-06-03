@@ -84,6 +84,9 @@ SINONIMI = {
     "valutat":           "pl_valutazione",
     "plus/minus val":    "pl_valutazione",
     "unrealized":        "pl_valutazione",
+    # pl_totale
+    "p/m totali lc":   "pl_totale_db",
+    "p/m totale lc":   "pl_totale_db",
     # valuta
     "valuta":            "valuta",
     "currency":          "valuta",
