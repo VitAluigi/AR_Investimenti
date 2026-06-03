@@ -8,11 +8,11 @@ from openpyxl.utils import get_column_letter
 import pandas as pd
 from datetime import datetime
 
-KPMG_BLU = "00338D"
-BIANCO = "FFFFFF"
-NERO = "000000"
-ARIAL = "Arial"
-FS = 8
+KPMG_BLU  = "00338D"
+BIANCO    = "FFFFFF"
+NERO      = "000000"
+ARIAL     = "Arial"
+FS        = 8
 FS_Titoli = 14
 
 def _fill(hex_color):
@@ -23,24 +23,22 @@ def _border():
     return Border(left=s, right=s, top=s, bottom=s)
 
 def _border_analisi(c_idx, start_col, end_col, is_last_row=False):
-    """Bordo esterno blu solo sui lati esterni della tabella."""
     s_blu  = Side(style="thin", color=KPMG_BLU)
     s_none = Side(style=None)
     return Border(
-        left = s_blu if c_idx == start_col else s_none,
-        right = s_blu if c_idx == end_col else s_none,
-        top = s_none,
-        bottom = s_blu if is_last_row else s_none,
+        left   = s_blu  if c_idx == start_col else s_none,
+        right  = s_blu  if c_idx == end_col   else s_none,
+        top    = s_none,
+        bottom = s_blu  if is_last_row else s_none,
     )
 
 def _border_header(c_idx, start_col, end_col):
-    """Bordo intestazione: blu sopra/sotto, blu laterale solo agli estremi."""
     s_blu  = Side(style="thin", color=KPMG_BLU)
     s_none = Side(style=None)
     return Border(
-        left = s_blu if c_idx == start_col else s_none,
-        right = s_blu if c_idx == end_col else s_none,
-        top = s_blu,
+        left   = s_blu  if c_idx == start_col else s_none,
+        right  = s_blu  if c_idx == end_col   else s_none,
+        top    = s_blu,
         bottom = s_blu,
     )
 
@@ -54,7 +52,14 @@ def _div(val, divisore):
 
 def _is_perc_col(col_name):
     n = str(col_name).lower()
-    return "peso" in n or "var %" in n or col_name == "Var %"
+    return "peso" in n or "var %" in n or "diff %" in n or col_name == "Var %"
+
+def _is_pl_col(col_name):
+    """Colonne che ricevono colore verde/rosso."""
+    n = str(col_name).lower()
+    return any(k in n for k in [
+        "realizzo", "valutazione", "variazione", "var %", "differenza", "diff %", "pl totale"
+    ])
 
 # ---------------------------------------------------------------------------
 # SCRIVI FOGLIO ANALISI
@@ -65,61 +70,54 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
                             unita_label: str,
                             divisore: float):
     ws.sheet_view.showGridLines = False
-    n_cols  = len(df.columns)
+    n_cols    = len(df.columns)
     start_col = 2
-    end_col = start_col + n_cols - 1
-    n_rows = len(df)
+    end_col   = start_col + n_cols - 1
+    n_rows    = len(df)
 
-    # B2 kpmg
     ws.cell(row=2, column=2, value="kpmg").font = Font(
         name="KPMG Logo", size=FS_Titoli, color=KPMG_BLU)
-
-    # B3 nome analisi
     ws.cell(row=3, column=2, value=nome_analisi).font = Font(
         name="KPMG Bold", size=FS_Titoli, color=KPMG_BLU)
 
-    # Riga 5: titolo blu
     if end_col > start_col:
         ws.merge_cells(start_row=5, start_column=start_col,
                        end_row=5, end_column=end_col)
     cell_tit = ws.cell(row=5, column=start_col,
                        value=f"{nome_analisi}\n{unita_label}")
-    cell_tit.font = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
-    cell_tit.fill = _fill(KPMG_BLU)
+    cell_tit.font      = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
+    cell_tit.fill      = _fill(KPMG_BLU)
     cell_tit.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
     ws.row_dimensions[5].height = 19.5
 
-    # Riga 6: intestazioni
     for c_idx, col_name in enumerate(df.columns, start_col):
         cell = ws.cell(row=6, column=c_idx, value=col_name)
-        cell.font = Font(name=ARIAL, size=FS, bold=True, color=NERO)
-        cell.fill = PatternFill(fill_type=None)
+        cell.font      = Font(name=ARIAL, size=FS, bold=True, color=NERO)
+        cell.fill      = PatternFill(fill_type=None)
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cell.border = _border_header(c_idx, start_col, end_col)
+        cell.border    = _border_header(c_idx, start_col, end_col)
         ws.column_dimensions[get_column_letter(c_idx)].width = max(12, len(str(col_name)) + 2)
     ws.row_dimensions[6].height = 12
 
-    # Righe dati
     num_fmt = _num_fmt(divisore)
     for r_idx, row in enumerate(df.itertuples(index=False), 7):
-        is_tot = str(row[0]).strip().lower() == "totale"
+        is_tot      = str(row[0]).strip().lower() == "totale"
         is_last_row = (r_idx == 6 + n_rows)
         ws.row_dimensions[r_idx].height = 12
 
         for c_idx, val in enumerate(row, start_col):
-            col_name = df.columns[c_idx - start_col]
-            is_perc = _is_perc_col(col_name)
+            col_name    = df.columns[c_idx - start_col]
+            is_perc     = _is_perc_col(col_name)
             display_val = val if is_perc else _div(val, divisore)
 
-            cell = ws.cell(row=r_idx, column=c_idx, value=display_val)
-            cell.font = Font(name=ARIAL, size=FS, bold=is_tot, color=NERO)
+            cell        = ws.cell(row=r_idx, column=c_idx, value=display_val)
+            cell.font   = Font(name=ARIAL, size=FS, bold=is_tot, color=NERO)
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
             if isinstance(display_val, (int, float)) and not isinstance(display_val, bool):
                 cell.number_format = '0.00' if is_perc else num_fmt
-                cell.alignment = Alignment(horizontal="right")
-                col_low = str(col_name).lower()
-                if any(k in col_low for k in ["realizzo", "valutazione", "variazione", "var %"]):
+                cell.alignment     = Alignment(horizontal="right")
+                if _is_pl_col(col_name):
                     if display_val > 0:
                         cell.fill = _fill("C6EFCE")
                     elif display_val < 0:
@@ -130,6 +128,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
     ws.column_dimensions["A"].width = 2
     ws.freeze_panes = ws.cell(row=7, column=start_col)
 
+
 # ---------------------------------------------------------------------------
 # GENERAZIONE WORKBOOK
 # ---------------------------------------------------------------------------
@@ -139,10 +138,10 @@ def genera_excel(dati: dict,
                  data_report: str = None,
                  unita: str = "€") -> Workbook:
 
-    wb = Workbook()
+    wb          = Workbook()
     data_report = data_report or datetime.today().strftime("%d/%m/%Y")
-    divisori = {"€": 1, "€ migliaia": 1_000, "€ milioni": 1_000_000}
-    divisore = divisori.get(unita, 1)
+    divisori    = {"€": 1, "€ migliaia": 1_000, "€ milioni": 1_000_000}
+    divisore    = divisori.get(unita, 1)
     unita_label = f"({unita})"
 
     # ------------------------------------------------------------------ #
@@ -160,26 +159,26 @@ def genera_excel(dati: dict,
     ws_r.merge_cells("B5:E5")
     c = ws_r.cell(row=5, column=2,
                   value=f"Riepilogo Portafoglio\n{data_report} — {unita_label}")
-    c.font = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
-    c.fill = _fill(KPMG_BLU)
+    c.font      = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
+    c.fill      = _fill(KPMG_BLU)
     c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
     ws_r.row_dimensions[5].height = 19.5
 
     for i, h in enumerate(["Indicatore", "N", "N-1", "Variazione"], 2):
         cell = ws_r.cell(row=6, column=i, value=h)
-        cell.font = Font(name=ARIAL, size=FS, bold=True, color=NERO)
+        cell.font   = Font(name=ARIAL, size=FS, bold=True, color=NERO)
         cell.border = _border()
     ws_r.row_dimensions[6].height = 12
 
     if "kpi" in dati and dati["kpi"]:
-        kpi = dati["kpi"]
+        kpi     = dati["kpi"]
         num_fmt = _num_fmt(divisore)
         rows_kpi = [
-            ("NAV Totale", kpi.get("nav"), kpi.get("nav_prev"), kpi.get("var_nav")),
-            ("N° Titoli", kpi.get("n_titoli"), None, None),
-            ("P&L Totale", kpi.get("pl_totale"), None, None),
-            ("Proventi", kpi.get("proventi"), None, None),
-            ("Rendimento %", kpi.get("rendimento_%"), None, None),
+            ("NAV Totale",   kpi.get("nav"),         kpi.get("nav_prev"), kpi.get("var_nav")),
+            ("N° Titoli",    kpi.get("n_titoli"),     None,                None),
+            ("P&L Totale",   kpi.get("pl_totale"),    None,                None),
+            ("Proventi",     kpi.get("proventi"),     None,                None),
+            ("Rendimento %", kpi.get("rendimento_%"), None,                None),
         ]
         for i, (label, n, n1, var) in enumerate(rows_kpi, 7):
             ws_r.row_dimensions[i].height = 12
@@ -190,8 +189,8 @@ def genera_excel(dati: dict,
                 if val is not None:
                     display = val if label in ("N° Titoli", "Rendimento %") else _div(val, divisore)
                 cell = ws_r.cell(row=i, column=col_idx, value=display)
-                cell.font = Font(name=ARIAL, size=FS)
-                cell.border = _border()
+                cell.font      = Font(name=ARIAL, size=FS)
+                cell.border    = _border()
                 cell.alignment = Alignment(horizontal="right")
                 if label == "N° Titoli":
                     cell.number_format = '0'
@@ -216,6 +215,7 @@ def genera_excel(dati: dict,
         ("top_holdings",             "Top10_Holdings", "Top 10 Holdings per Fair Value"),
         ("esposizione_valutaria",    "Valute",         "Esposizione Valutaria"),
         ("esposizione_settoriale",   "Settori",        "Esposizione Settoriale"),
+        ("confronto_bv_fv",         "BV_vs_FV",       "Book Value vs Fair Value per Asset Class"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
@@ -238,41 +238,57 @@ def genera_excel(dati: dict,
         ws_det.sheet_view.showGridLines = False
 
         ETICHETTE = {
-            "isin": "ISIN", "descrizione": "Descrizione", "asset_class": "Asset Class",
-            "quantita": "Quantità", "prezzo_carico": "Prezzo Carico",
-            "fair_value": "Fair Value N", "fair_value_prev": "Fair Value N-1",
-            "fair_value_level": "Fair Value Level",
-            "tipo_emittente": "Tipo Emittente", "rating": "Rating",
-            "paese": "Paese", "valuta": "Valuta", "settore": "Settore",
-            "cedola": "Interessi N", "cedola_prev": "Interessi N-1",
-            "dividendi": "Dividendi N", "dividendi_prev": "Dividendi N-1",
-            "pl_realizzo": "PL Realizzo N", "pl_realizzo_prev": "PL Realizzo N-1",
-            "pl_valutazione": "PL Valutazione N", "pl_valutazione_prev": "PL Valutazione N-1",
-            "data_acquisto": "Data Acquisto", "scadenza": "Scadenza",
+            "isin":                "ISIN",
+            "descrizione":         "Descrizione",
+            "asset_class":         "Asset Class",
+            "quantita":            "Quantità",
+            "prezzo_carico":       "Prezzo Carico",
+            "fair_value":          "Fair Value N",
+            "fair_value_prev":     "Fair Value N-1",
+            "fair_value_level":    "Fair Value Level",
+            "fair_value_mercato":  "Fair Value Mercato",
+            "tipo_emittente":      "Tipo Emittente",
+            "rating":              "Rating",
+            "paese":               "Paese",
+            "valuta":              "Valuta",
+            "settore":             "Settore",
+            "cedola":              "Interessi N",
+            "cedola_prev":         "Interessi N-1",
+            "dividendi":           "Dividendi N",
+            "dividendi_prev":      "Dividendi N-1",
+            "pl_realizzo":         "PL Realizzo N",
+            "pl_realizzo_prev":    "PL Realizzo N-1",
+            "pl_valutazione":      "PL Valutazione N",
+            "pl_valutazione_prev": "PL Valutazione N-1",
+            "pl_totale_db":        "PL Totale N",
+            "pl_totale_db_prev":   "PL Totale N-1",
+            "data_acquisto":       "Data Acquisto",
+            "scadenza":            "Scadenza",
         }
-        df_det    = dati["dettaglio"].rename(columns=ETICHETTE)
-        n_det     = len(df_det.columns)
+        df_det     = dati["dettaglio"].rename(columns=ETICHETTE)
+        n_det      = len(df_det.columns)
         n_det_rows = len(df_det)
 
         for c_idx, col_name in enumerate(df_det.columns, 1):
-            cell = ws_det.cell(row=1, column=c_idx, value=col_name)
-            cell.font = Font(name=ARIAL, size=FS, bold=True)
-            cell.border = _border_header(c_idx, 1, n_det)
+            cell           = ws_det.cell(row=1, column=c_idx, value=col_name)
+            cell.font      = Font(name=ARIAL, size=FS, bold=True)
+            cell.border    = _border_header(c_idx, 1, n_det)
             cell.alignment = Alignment(horizontal="center", wrap_text=True)
             ws_det.column_dimensions[get_column_letter(c_idx)].width = 16
         ws_det.row_dimensions[1].height = 12
         ws_det.auto_filter.ref = f"A1:{get_column_letter(n_det)}1"
-        ws_det.freeze_panes = "A2"
+        ws_det.freeze_panes   = "A2"
 
         for r_idx, row in enumerate(df_det.itertuples(index=False), 2):
             is_last = (r_idx == 1 + n_det_rows)
             ws_det.row_dimensions[r_idx].height = 12
             for c_idx, val in enumerate(row, 1):
-                cell  = ws_det.cell(row=r_idx, column=c_idx, value=val)
-                cell.font = Font(name=ARIAL, size=FS)
+                cell        = ws_det.cell(row=r_idx, column=c_idx, value=val)
+                cell.font   = Font(name=ARIAL, size=FS)
                 cell.border = _border_analisi(c_idx, 1, n_det, is_last)
 
     return wb
+
 
 def salva_excel(wb: Workbook, path: str):
     wb.save(path)
