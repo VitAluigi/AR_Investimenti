@@ -16,38 +16,58 @@ from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
                               rating_per_emittente, geografia_governativi,
                               economica_completa, top_holdings,
                               esposizione_valutaria, esposizione_settoriale,
-                              confronto_bv_fv)
+                              confronto_bv_fv, top_operazioni)
 from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
 from config import INPUT_DIR, OUTPUT_DIR
 
+# Nome foglio transaction report (case-insensitive match)
+TRANSACTION_SHEET_KEYWORDS = ["transaction", "operazioni", "movimenti"]
+
 
 # ---------------------------------------------------------------------------
-# STEP 1: Leggi e pulisci il file Excel grezzo
+# STEP 1: Leggi file Excel — portafoglio + eventuale transaction report
 # ---------------------------------------------------------------------------
 
-def leggi_portafoglio(path: str) -> pd.DataFrame:
+def leggi_portafoglio(path: str) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     print(f"[1/5] Lettura file: {path}")
     try:
         xls = pd.ExcelFile(path)
-        foglio_scelto = xls.sheet_names[0]
+        sheet_names = xls.sheet_names
 
-        if len(xls.sheet_names) > 1:
-            max_cols = 0
-            for sheet in xls.sheet_names:
-                df_temp = pd.read_excel(path, sheet_name=sheet, nrows=5)
-                if len(df_temp.columns) > max_cols:
-                    max_cols = len(df_temp.columns)
-                    foglio_scelto = sheet
-            print(f"    → Foglio selezionato: '{foglio_scelto}' (tra {xls.sheet_names})")
+        # Foglio portafoglio: quello con più colonne tra i non-transaction
+        foglio_ptf = sheet_names[0]
+        foglio_tx  = None
 
-        df = pd.read_excel(path, sheet_name=foglio_scelto)
-        df = df.dropna(how="all")
-        df = df.dropna(axis=1, how="all")
+        for sheet in sheet_names:
+            nome_lower = sheet.lower()
+            if any(k in nome_lower for k in TRANSACTION_SHEET_KEYWORDS):
+                foglio_tx = sheet
+            else:
+                df_temp = pd.read_excel(path, sheet_name=sheet, nrows=3)
+                df_curr = pd.read_excel(path, sheet_name=foglio_ptf, nrows=3)
+                if len(df_temp.columns) > len(df_curr.columns):
+                    foglio_ptf = sheet
+
+        if foglio_tx:
+            print(f"    → Foglio portafoglio: '{foglio_ptf}', Transaction Report: '{foglio_tx}'")
+        else:
+            print(f"    → Foglio portafoglio: '{foglio_ptf}' (nessun transaction report trovato)")
+
+        df = pd.read_excel(path, sheet_name=foglio_ptf)
+        df = df.dropna(how="all").dropna(axis=1, how="all")
         df.columns = df.columns.astype(str).str.strip()
 
-        print(f"    → Righe: {len(df)}, Colonne: {len(df.columns)}")
-        return df
+        df_tx = None
+        if foglio_tx:
+            df_tx = pd.read_excel(path, sheet_name=foglio_tx)
+            df_tx = df_tx.dropna(how="all").dropna(axis=1, how="all")
+            df_tx.columns = df_tx.columns.astype(str).str.strip()
+            print(f"    → Portafoglio: {len(df)} righe | Transaction Report: {len(df_tx)} righe")
+        else:
+            print(f"    → Righe: {len(df)}, Colonne: {len(df.columns)}")
+
+        return df, df_tx
 
     except Exception as e:
         print(f"[ERRORE] Impossibile leggere il file: {e}")
@@ -55,7 +75,7 @@ def leggi_portafoglio(path: str) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# STEP 2: Mapping colonne
+# STEP 2: Mapping colonne portafoglio
 # ---------------------------------------------------------------------------
 
 def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
@@ -73,10 +93,11 @@ def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# STEP 3: Calcola tutte le analisi disponibili
+# STEP 3: Calcola analisi
 # ---------------------------------------------------------------------------
 
-def calcola_analisi(df: pd.DataFrame) -> dict:
+def calcola_analisi(df: pd.DataFrame,
+                    df_tx: pd.DataFrame | None = None) -> dict:
     print(f"[3/5] Calcolo analisi...")
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
@@ -111,12 +132,18 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
     if disponibili.get("esposizione_settoriale"):
         dati["esposizione_settoriale"] = esposizione_settoriale(df)
 
-    # Confronto BV vs FV — richiede entrambe le colonne
     if (disponibili.get("confronto_bv_fv") and
             "book_value" in df.columns and
             "fair_value" in df.columns and
             "asset_class" in df.columns):
         dati["confronto_bv_fv"] = confronto_bv_fv(df)
+
+    # Transaction report — indipendente dal mapping portafoglio
+    if df_tx is not None and not df_tx.empty:
+        df_top_op = top_operazioni(df_tx, n=20)
+        if df_top_op is not None and not df_top_op.empty:
+            dati["top_operazioni"] = df_top_op
+            print(f"    → Top operazioni: {len(df_top_op)} righe")
 
     dati["dettaglio"] = df
 
@@ -125,7 +152,7 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# STEP 4 & 5: Genera Excel e Word
+# STEP 4 & 5: Genera output
 # ---------------------------------------------------------------------------
 
 def genera_output(dati: dict, nome_portafoglio: str,
@@ -155,9 +182,9 @@ def genera_output(dati: dict, nome_portafoglio: str,
 def genera_report(path_input: str,
                   nome_portafoglio: str = "Portafoglio",
                   output_dir: str = OUTPUT_DIR) -> tuple[str, str]:
-    df_raw    = leggi_portafoglio(path_input)
-    df_mapped = esegui_mapping(df_raw)
-    dati      = calcola_analisi(df_mapped)
+    df_raw, df_tx = leggi_portafoglio(path_input)
+    df_mapped     = esegui_mapping(df_raw)
+    dati          = calcola_analisi(df_mapped, df_tx)
     return genera_output(dati, nome_portafoglio, output_dir)
 
 
