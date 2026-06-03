@@ -74,8 +74,8 @@ with st.spinner("Lettura file in corso..."):
 with st.spinner("Mapping colonne..."):
     def _esegui_mapping(df):
         mapping  = mappa_colonne(df.columns.tolist())
-        info     = report_mapping(mapping)
-        df_m     = applica_mapping(df, mapping)
+        info = report_mapping(mapping)
+        df_m = applica_mapping(df, mapping)
         return df_m.loc[:, ~df_m.columns.duplicated()], mapping, info
 
     if tipo == "ship":
@@ -87,13 +87,13 @@ with st.spinner("Mapping colonne..."):
         df_inc_n, df_inc_n1 = dfs_eco
         df_eco_n,  _, _ = _esegui_mapping(df_inc_n)
         df_eco_n1, _, _ = _esegui_mapping(df_inc_n1)
-        df_eco    = unisci_ship_economico(df_eco_n, df_eco_n1)
+        df_eco = unisci_ship_economico(df_eco_n, df_eco_n1)
         df_mapped = _merge_ptf_eco(df_mapped, df_eco)
 
-        st.info("📊 DB SHIP rilevato (5 sheet: Inventory N+N-1, Income N+N-1, Transaction Report)")
+        st.info("DB SHIP rilevato (5 sheet: Inventory N+N-1, Income N+N-1, Transaction Report)")
     else:
         df_mapped, mapping, info = _esegui_mapping(df_ptf_n)
-        st.info("📊 DB SOFIA rilevato (2 sheet: Posizioni + Transaction Report)")
+        st.info("DB SOFIA rilevato (2 sheet: Posizioni + Transaction Report)")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 1: MAPPING
@@ -154,7 +154,7 @@ for i, (nome, attiva) in enumerate(disponibili.items()):
     with cols[i % 3]:
         colore_bg  = "#ffffff" if attiva else "#ffeaea"
         colore_txt = "rgb(0,51,141)" if attiva else "#dc3545"
-        icona      = "OK" if attiva else "KO"
+        icona = "OK" if attiva else "KO"
         st.markdown(
             f"""<div style="background-color:{colore_bg};color:{colore_txt};
             padding:8px 12px;margin-bottom:6px;border-radius:6px;
@@ -167,9 +167,9 @@ n_attive = sum(1 for v in disponibili.values() if v)
 st.caption(f"**{n_attive}/{len(disponibili)}** analisi disponibili con i dati forniti.")
 
 if df_tx is not None and not df_tx.empty:
-    st.success("✅ Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
+    st.success("Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
 else:
-    st.info("ℹ️ Nessun Transaction Report — sheet Top 20 Operazioni non disponibile.")
+    st.info("Nessun Transaction Report — sheet Top 20 Operazioni non disponibile.")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 3: KPI
@@ -184,10 +184,10 @@ def fmt_perc(v):
     return f"{v:.2f}%" if v is not None else "n.d."
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("NAV Totale",   fmt_val(kpi.get("nav")))
-c2.metric("N° Titoli",    kpi.get("n_titoli", "n.d."))
-c3.metric("P&L Totale",   fmt_val(kpi.get("pl_totale")))
-c4.metric("Proventi",     fmt_val(kpi.get("proventi")))
+c1.metric("NAV Totale", fmt_val(kpi.get("nav")))
+c2.metric("N° Titoli", kpi.get("n_titoli", "n.d."))
+c3.metric("P&L Totale", fmt_val(kpi.get("pl_totale")))
+c4.metric("Proventi", fmt_val(kpi.get("proventi")))
 c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 
 # ---------------------------------------------------------------------------
