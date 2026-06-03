@@ -96,7 +96,7 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
             index="asset_class", columns="fair_value_level",
             values=col_val, aggfunc="sum", fill_value=0,
         )
-        p.columns = [f"Level {c} {suffix}" for c in p.columns]
+        p.columns = [f"FV {c} {suffix}" for c in p.columns]
         return p
 
     pivot_n = _pivot("book_value", "N")
