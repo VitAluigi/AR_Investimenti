@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/mapper.py — Mapping intelligente delle colonne
+# modules/mapper.py - Mapping intelligente delle colonne
 # =============================================================================
 
 import json
@@ -13,68 +13,87 @@ from modules.ai_client import chiedi_ai
 # Dizionario sinonimi — CAMPI STANDARD (non N-1)
 # ---------------------------------------------------------------------------
 SINONIMI = {
-    # fair_value (book value N nel db reale)
-    "fair value level":          "fair_value_level",   # PRIMA di "fair value"
+    # ---- BOOK VALUE (valore contabile N) ----
+    "valore carico lc finale":   "book_value",
+    "valore carico finale":      "book_value",
+    "valore carico lc":          "book_value",
+    "book value finale":         "book_value",
+
+    # ---- BOOK VALUE PREV (valore contabile N-1) ----
+    # Non contengono "n-1" quindi vanno qui, non in SINONIMI_PREV
+    "valore carico lc iniziale": "book_value_prev",
+    "valore carico iniziale":    "book_value_prev",
+    "book value iniziale":       "book_value_prev",
+    "nominale iniziale":         "book_value_prev",
+
+    # ---- FAIR VALUE (valore di mercato N) ----
+    "fair value level":          "fair_value_level",  # PRIMA di "fair value"
+    "valore lc mercato finale":  "fair_value",
+    "valore mercato finale":     "fair_value",
+    "prezzo finale":             "fair_value",
     "fair value":                "fair_value",
-    "valore carico lc finale":   "fair_value",
-    "valore carico finale":      "fair_value",
     "valore di mercato":         "fair_value",
-    "controvalore":              "fair_value",
     "mtm":                       "fair_value",
     "mark to market":            "fair_value",
     "valore corrente":           "fair_value",
     "market value":              "fair_value",
-    # fair_value_mercato (valore di mercato effettivo)
-    "valore lc mercato finale":  "fair_value_mercato",
-    "valore mercato finale":     "fair_value_mercato",
-    "prezzo finale":             "fair_value_mercato",
-    # fair_value_level
+    "controvalore":              "fair_value",
+
+    # ---- FAIR VALUE LEVEL ----
     "fv level":                  "fair_value_level",
     "level":                     "fair_value_level",
-    # asset_class
+
+    # ---- ASSET CLASS ----
     "tipo asset sofia":          "asset_class",
     "tipologia attivo classe d": "asset_class",
     "asset class":               "asset_class",
     "tipologia":                 "asset_class",
     "categoria":                 "asset_class",
     "tipo strumento":            "asset_class",
-    # tipo_emittente
+
+    # ---- TIPO EMITTENTE ----
     "tipo emittente":            "tipo_emittente",
     "issuer type":               "tipo_emittente",
-    # rating
+
+    # ---- RATING ----
     "rating s&p":                "rating",
     "rating moody":              "rating",
     "rating fitch":              "rating",
     "merito credito":            "rating",
     "rating":                    "rating",
-    # paese
+
+    # ---- PAESE ----
     "paese emittente":           "paese",
     "paese":                     "paese",
     "country":                   "paese",
     "nazione":                   "paese",
     "area geografica":           "paese",
-    # isin
+
+    # ---- ISIN ----
     "codice isin":               "isin",
     "isin":                      "isin",
-    # descrizione
+
+    # ---- DESCRIZIONE ----
     "descrizione del titolo":    "descrizione",
     "denominazione":             "descrizione",
     "descrizione":               "descrizione",
     "nome titolo":               "descrizione",
     "security":                  "descrizione",
-    # quantita
+
+    # ---- QUANTITA ----
     "nominale finale":           "quantita",
     "quantit":                   "quantita",
     "qtà":                       "quantita",
     "pezzi":                     "quantita",
-    # prezzo_carico
+
+    # ---- PREZZO CARICO ----
     "prezzo carico finale":      "prezzo_carico",
     "prezzo storico":            "prezzo_carico",
     "prezzo carico":             "prezzo_carico",
     "costo medio":               "prezzo_carico",
     "prezzo medio":              "prezzo_carico",
-    "book value":                "prezzo_carico",
-    # cedola (include dividendi nel db reale)
+
+    # ---- CEDOLA / INTERESSI ----
     "competenza lorda cedole lc":    "cedola",
     "rateo cedole lordo lc periodo": "cedola",
     "cedola/interessi":              "cedola",
@@ -82,11 +101,13 @@ SINONIMI = {
     "interessi":                     "cedola",
     "proventi":                      "cedola",
     "coupon":                        "cedola",
-    # dividendi
+
+    # ---- DIVIDENDI ----
     "dividendi incassati":       "dividendi",
     "dividendi":                 "dividendi",
     "dividend":                  "dividendi",
-    # pl_realizzo
+
+    # ---- PL REALIZZO ----
     "p/m realizzo periodo":      "pl_realizzo",
     "plus realizzo periodo":     "pl_realizzo",
     "minus realizzo periodo":    "pl_realizzo",
@@ -94,7 +115,8 @@ SINONIMI = {
     "pl realizzo":               "pl_realizzo",
     "realizz":                   "pl_realizzo",
     "plus/minus real":           "pl_realizzo",
-    # pl_valutazione
+
+    # ---- PL VALUTAZIONE ----
     "p/m prezzo mercato fine":   "pl_valutazione",
     "plus prezzo mercato fine":  "pl_valutazione",
     "minus prezzo mercato fine": "pl_valutazione",
@@ -103,23 +125,28 @@ SINONIMI = {
     "valutat":                   "pl_valutazione",
     "plus/minus val":            "pl_valutazione",
     "unrealized":                "pl_valutazione",
-    # pl_totale_db (precalcolato nel db)
+
+    # ---- PL TOTALE (precalcolato) ----
     "p/m totali lc":             "pl_totale_db",
     "p/m totale lc":             "pl_totale_db",
-    # valuta
+
+    # ---- VALUTA ----
     "valuta":                    "valuta",
     "currency":                  "valuta",
     "divisa":                    "valuta",
-    # settore
+
+    # ---- SETTORE ----
     "settore":                   "settore",
     "sector":                    "settore",
     "industria":                 "settore",
-    # date
+
+    # ---- DATE ----
     "data acquisto":             "data_acquisto",
     "data operaz":               "data_acquisto",
     "scadenza":                  "scadenza",
     "maturity":                  "scadenza",
-    # peso
+
+    # ---- PESO ----
     "peso":                      "peso_ptf",
     "% portafoglio":             "peso_ptf",
     "% ptf":                     "peso_ptf",
@@ -127,37 +154,40 @@ SINONIMI = {
 }
 
 # ---------------------------------------------------------------------------
-# Dizionario sinonimi — CAMPI N-1 (anno precedente)
+# Dizionario sinonimi — CAMPI N-1 (contengono "n-1" nel nome colonna)
 # ---------------------------------------------------------------------------
 SINONIMI_PREV = {
-    # fair_value_prev (book value N-1)
-    "valore carico lc iniziale":     "fair_value_prev",
-    "valore carico iniziale":        "fair_value_prev",
-    "mtm n-1":                       "fair_value_prev",
-    "fair value n-1":                "fair_value_prev",
-    "valore di mercato n-1":         "fair_value_prev",
-    "controvalore n-1":              "fair_value_prev",
+    # book_value_prev
+    "book value n-1":            "book_value_prev",
+    "valore carico n-1":         "book_value_prev",
+    "mtm n-1":                   "book_value_prev",
+    # fair_value_prev
+    "fair value n-1":            "fair_value_prev",
+    "valore mercato n-1":        "fair_value_prev",
+    "valore lc mercato n-1":     "fair_value_prev",
+    "controvalore n-1":          "fair_value_prev",
+    "valore di mercato n-1":     "fair_value_prev",
     # cedola_prev
-    "cedola/interessi n-1":          "cedola_prev",
-    "cedola n-1":                    "cedola_prev",
-    "interessi n-1":                 "cedola_prev",
-    "competenza lorda cedole n-1":   "cedola_prev",
+    "cedola/interessi n-1":      "cedola_prev",
+    "cedola n-1":                "cedola_prev",
+    "interessi n-1":             "cedola_prev",
+    "competenza lorda cedole n-1":"cedola_prev",
     # dividendi_prev
-    "dividendi incassati n-1":       "dividendi_prev",
-    "dividendi n-1":                 "dividendi_prev",
+    "dividendi incassati n-1":   "dividendi_prev",
+    "dividendi n-1":             "dividendi_prev",
     # pl_realizzo_prev
-    "p/m realizzo periodo n-1":      "pl_realizzo_prev",
-    "p/l realizzo n-1":              "pl_realizzo_prev",
-    "pl realizzo n-1":               "pl_realizzo_prev",
-    "plus/minus realizzo n-1":       "pl_realizzo_prev",
+    "p/m realizzo periodo n-1":  "pl_realizzo_prev",
+    "p/l realizzo n-1":          "pl_realizzo_prev",
+    "pl realizzo n-1":           "pl_realizzo_prev",
+    "plus/minus realizzo n-1":   "pl_realizzo_prev",
     # pl_valutazione_prev
-    "p/m prezzo mercato fine n-1":   "pl_valutazione_prev",
-    "p/l valutazione n-1":           "pl_valutazione_prev",
-    "pl valutazione n-1":            "pl_valutazione_prev",
-    "plus/minus valutazione n-1":    "pl_valutazione_prev",
+    "p/m prezzo mercato n-1":    "pl_valutazione_prev",
+    "p/l valutazione n-1":       "pl_valutazione_prev",
+    "pl valutazione n-1":        "pl_valutazione_prev",
+    "plus/minus valutazione n-1":"pl_valutazione_prev",
     # pl_totale_db_prev
-    "p/m totali lc n-1":             "pl_totale_db_prev",
-    "p/m totale lc n-1":             "pl_totale_db_prev",
+    "p/m totali lc n-1":         "pl_totale_db_prev",
+    "p/m totale lc n-1":         "pl_totale_db_prev",
 }
 
 
@@ -177,20 +207,18 @@ def _salva_mapping_appreso(mapping: dict):
 def _match_sinonimo(col: str) -> str | None:
     col_lower = col.lower().strip()
 
-    # Se contiene "n-1" → cerca SOLO nei sinonimi prev
+    # Se contiene "n-1" → cerca SOLO in SINONIMI_PREV
     if "n-1" in col_lower:
-        for pattern, canonico in SINONIMI_PREV.items():
+        for pattern, canonico in sorted(SINONIMI_PREV.items(), key=lambda x: -len(x[0])):
             if pattern in col_lower:
                 return canonico
         return None
 
-    # Match esatto prima
-    for pattern, canonico in SINONIMI.items():
-        if col_lower == pattern:
-            return canonico
+    # Match esatto
+    if col_lower in SINONIMI:
+        return SINONIMI[col_lower]
 
-    # Match parziale: pattern più lunghi prima per evitare ambiguità
-    # (es. "fair value level" prima di "fair value")
+    # Match parziale: pattern più lunghi prima
     for pattern, canonico in sorted(SINONIMI.items(), key=lambda x: -len(x[0])):
         if re.search(r'\b' + re.escape(pattern) + r'\b', col_lower):
             return canonico
