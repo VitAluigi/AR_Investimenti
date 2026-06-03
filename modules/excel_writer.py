@@ -118,7 +118,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
             if isinstance(display_val, (int, float)) and not isinstance(display_val, bool):
-                cell.number_format = '0.00' if is_perc else num_fmt
+                cell.number_format = '0.00"%"' if is_perc else num_fmt
                 cell.alignment = Alignment(horizontal="right")
                 if _is_pl_col(col_name):
                     if display_val > 0:
