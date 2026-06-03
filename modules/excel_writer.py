@@ -56,12 +56,12 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
     """
     ws.sheet_view.showGridLines = False
     n_cols     = len(df.columns)
-    start_col  = 2   # colonna B
+    start_col  = 2
     end_col    = start_col + n_cols - 1
 
     # B2 KPMG
     ws.cell(row=2, column=2, value="kpmg").font = Font(
-        name="KPMG Logo", size=FS_Titoli, bold=True, color=KPMG_BLU)
+        name="KPMG Logo", size=FS_Titoli, color=KPMG_BLU)
 
     # B3 nome analisi
     ws.cell(row=3, column=2, value=nome_analisi).font = Font(
@@ -153,10 +153,10 @@ def genera_excel(dati: dict,
     ws_r.title = "Summary"
     ws_r.sheet_view.showGridLines = False
 
-    ws_r.cell(row=2, column=2, value="KPMG").font = Font(
-        name=ARIAL, size=FS, bold=True, color=NERO)
+    ws_r.cell(row=2, column=2, value="kpmg").font = Font(
+        name="KPMG Logo", size=FS, color=NERO)
     ws_r.cell(row=3, column=2, value=nome_portafoglio).font = Font(
-        name=ARIAL, size=FS, color=NERO)
+        name="KPMG Bold", size=FS, color=NERO)
 
     ws_r.merge_cells("B5:E5")
     c = ws_r.cell(row=5, column=2,
