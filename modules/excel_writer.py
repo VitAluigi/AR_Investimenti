@@ -43,7 +43,7 @@ def _border_header(c_idx, start_col, end_col):
     )
 
 def _num_fmt(divisore):
-    return '#,##0.0' if divisore > 1 else '#,##0.00'
+    return '#.##0,0' if divisore > 1 else '#.##0,00'
 
 def _div(val, divisore):
     if isinstance(val, (int, float)) and not isinstance(val, bool):
@@ -118,7 +118,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
             if isinstance(display_val, (int, float)) and not isinstance(display_val, bool):
-                cell.number_format = '0.00"%"' if is_perc else num_fmt
+                cell.number_format = '0,00"%"' if is_perc else num_fmt
                 cell.alignment = Alignment(horizontal="right")
                 if _is_pl_col(col_name):
                     if display_val > 0:
@@ -197,7 +197,7 @@ def genera_excel(dati: dict,
                 if label == "N° Titoli":
                     cell.number_format = '0'
                 elif label == "Rendimento %":
-                    cell.number_format = '0.00"%"'
+                    cell.number_format = '0,00"%"'
                 else:
                     cell.number_format = num_fmt
 
