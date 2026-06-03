@@ -18,6 +18,7 @@ SINONIMI = {
     "valore carico finale":      "book_value",
     "valore carico lc":          "book_value",
     "book value finale":         "book_value",
+    "total book value LC":       "book_value",
 
     # ---- BOOK VALUE PREV (valore contabile N-1) ----
     "valore carico lc iniziale": "book_value_prev",
