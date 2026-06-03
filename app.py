@@ -179,7 +179,7 @@ if st.button("Genera Excel + Word", type="primary", use_container_width=True):
     with col_dl1:
         with open(path_excel, "rb") as f:
             st.download_button(
-                label="⬇Scarica Excel",
+                label="Scarica Excel",
                 data=f,
                 file_name=os.path.basename(path_excel),
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
