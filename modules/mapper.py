@@ -15,6 +15,7 @@ from modules.ai_client import chiedi_ai
 SINONIMI = {
     # ---- BOOK VALUE (valore contabile N) ----
     "valore carico lc finale":   "book_value",
+    "valore carico lc iniziale": "book_value_prev",
     "valore carico finale":      "book_value",
     "valore carico lc":          "book_value",
     "book value finale":         "book_value",
@@ -22,6 +23,7 @@ SINONIMI = {
 
     # ---- FAIR VALUE (valore di mercato N) ----
     "valore lc mercato finale":  "fair_value",
+    "valore lc mercato iniziale":"fair_value_prev",
     "valore mercato finale":     "fair_value",
     "prezzo finale":             "fair_value",
     "fair value":                "fair_value",
