@@ -2,8 +2,6 @@
 # modules/analisi.py — Capability discovery e calcoli finanziari
 # =============================================================================
 
-from unittest import result
-
 import pandas as pd
 import numpy as np
 from config import ANALISI_REQUISITI
@@ -18,7 +16,7 @@ def scopri_analisi(df: pd.DataFrame) -> dict:
     risultato = {}
     for nome, requisiti in ANALISI_REQUISITI.items():
         if nome == "economica_completa":
-            voci = ["cedola", "dividendi", "pl_realizzo", "pl_valutazione"]
+            voci = ["cedola", "dividendi", "pl_realizzo", "pl_valutazione", "pl_totale_db"]
             risultato[nome] = (
                 "asset_class" in colonne and any(v in colonne for v in voci)
             )
@@ -46,7 +44,6 @@ def _sum(df, col):
     return 0.0
 
 def _var_pct(n, n1):
-    """Variazione % tra N e N-1."""
     if n1 and n1 != 0:
         return round((n - n1) / abs(n1) * 100, 2)
     return None
@@ -57,37 +54,31 @@ def _build_confronto(df_base: pd.DataFrame,
                      col_n1: str = None) -> pd.DataFrame:
     label_display = col_label.replace("_", " ").title()
 
-    # Aggrega N - usa col_label originale per il groupby
     agg = df_base.groupby(col_label, dropna=False)[col_n].sum().reset_index()
     agg.columns = [label_display, "N"]
     tot_n = agg["N"].sum()
     agg["Peso %"] = (agg["N"] / tot_n * 100).round(2) if tot_n else 0
 
-    # Aggrega N-1 - usa col_label originale per il groupby
     if col_n1 and col_n1 in df_base.columns:
         agg_prev = df_base.groupby(col_label, dropna=False)[col_n1].sum().reset_index()
         agg_prev.columns = [label_display, "N-1"]
         agg = agg.merge(agg_prev, on=label_display, how="left")
         agg["Variazione"] = (agg["N"] - agg["N-1"]).round(2)
-        agg["Var %"] = agg.apply(
-            lambda r: _var_pct(r["N"], r["N-1"]), axis=1
-        )
+        agg["Var %"] = agg.apply(lambda r: _var_pct(r["N"], r["N-1"]), axis=1)
         tot_n1 = agg["N-1"].sum()
     else:
-        agg["N-1"]        = None
-        agg["Variazione"] = None
-        agg["Var %"]      = None
+        agg["N-1"] = agg["Variazione"] = agg["Var %"] = None
         tot_n1 = None
 
     agg = agg.sort_values("N", ascending=False)
 
     totale = {
         label_display: "Totale",
-        "N":            tot_n,
-        "Peso %":       100.0,
-        "N-1":          tot_n1,
-        "Variazione":   round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
-        "Var %":        _var_pct(tot_n, tot_n1),
+        "N":           tot_n,
+        "Peso %":      100.0,
+        "N-1":         tot_n1,
+        "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
+        "Var %":       _var_pct(tot_n, tot_n1),
     }
     return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
 
@@ -101,7 +92,6 @@ def patrimoniale_asset_class(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
-    """Asset class × Fair Value Level — N e N-1 separati."""
     def _pivot(col_val, suffix):
         p = df.pivot_table(
             index="asset_class", columns="fair_value_level",
@@ -112,10 +102,8 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
 
     pivot_n = _pivot("fair_value", "N")
     result  = pivot_n.copy()
-
     if "fair_value_prev" in df.columns:
-        pivot_n1 = _pivot("fair_value_prev", "N-1")
-        result = pd.concat([pivot_n, pivot_n1], axis=1)
+        result = pd.concat([pivot_n, _pivot("fair_value_prev", "N-1")], axis=1)
 
     result["Totale N"] = pivot_n.sum(axis=1)
     result.index.name  = "Asset Class"
@@ -130,21 +118,19 @@ def rating_per_emittente(df: pd.DataFrame, tipo: str) -> pd.DataFrame:
         mask = df["tipo_emittente"].str.lower().str.startswith("gov")
     else:
         mask = df["tipo_emittente"].str.lower().str.contains("non_gov", na=False)
-    sub  = df[mask]
+    sub = df[mask]
     if sub.empty:
         return pd.DataFrame(columns=["rating", "N", "Peso %", "N-1", "Variazione", "Var %"])
 
     result = _build_confronto(sub, "rating", "fair_value", "fair_value_prev")
 
-    # Ordine rating standard
     ordine = ["AAA","AA+","AA","AA-","A+","A","A-","BBB+","BBB","BBB-",
               "BB+","BB","BB-","B+","B","B-","NR","N.R.","n.r."]
     label_col = result.columns[0]
     non_tot = result[result[label_col] != "Totale"].copy()
     tot_row = result[result[label_col] == "Totale"]
     non_tot["_ord"] = non_tot[label_col].apply(
-        lambda x: ordine.index(str(x)) if str(x) in ordine else 999
-        )
+        lambda x: ordine.index(str(x)) if str(x) in ordine else 999)
     non_tot = non_tot.sort_values("_ord").drop(columns=["_ord"])
     return pd.concat([non_tot, tot_row], ignore_index=True)
 
@@ -154,26 +140,45 @@ def geografia_governativi(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df[mask], "paese", "fair_value", "fair_value_prev")
 
 
+def confronto_bv_fv(df: pd.DataFrame) -> pd.DataFrame:
+    """Confronto Book Value vs Fair Value di mercato per asset class."""
+    result = df.groupby("asset_class", dropna=False).agg(
+        book_value=("fair_value",         "sum"),
+        fair_value=("fair_value_mercato", "sum"),
+    ).reset_index()
+    result.columns = ["Asset Class", "Book Value (€)", "Fair Value Mercato (€)"]
+    result["Differenza (€)"] = (result["Fair Value Mercato (€)"] - result["Book Value (€)"]).round(2)
+    result["Diff %"] = result.apply(
+        lambda r: _var_pct(r["Fair Value Mercato (€)"], r["Book Value (€)"]), axis=1)
+    result = result.sort_values("Book Value (€)", ascending=False)
+    tot = result.select_dtypes("number").sum()
+    tot["Asset Class"] = "Totale"
+    if tot["Book Value (€)"] != 0:
+        tot["Diff %"] = _var_pct(tot["Fair Value Mercato (€)"], tot["Book Value (€)"])
+    return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
+
+
 # ---------------------------------------------------------------------------
 # 4. ANALISI ECONOMICA
 # ---------------------------------------------------------------------------
 
 def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Per ogni voce economica: N | N-1 | Variazione | Var %
-    Colonne: Asset Class | [voce] N | [voce] N-1 | ... | Totale N | Totale N-1 | Var | Var %
+    Tabella economica per asset class con dettaglio:
+    Interessi | Dividendi | PL Realizzo | PL Valutazione | PL Totale | N-1 | Var | Var %
+    Usa pl_totale_db se disponibile, altrimenti calcola la somma.
     """
     voci = [
-        ("Interessi N",       "cedola"),
+        ("Cedole/Int. N",     "cedola"),
         ("Dividendi N",       "dividendi"),
         ("PL Realizzo N",     "pl_realizzo"),
         ("PL Valutazione N",  "pl_valutazione"),
     ]
     voci_prev = [
-        ("Interessi N-1",      "cedola_prev"),
-        ("Dividendi N-1",      "dividendi_prev"),
-        ("PL Realizzo N-1",    "pl_realizzo_prev"),
-        ("PL Valutazione N-1", "pl_valutazione_prev"),
+        ("Cedole/Int. N-1",   "cedola_prev"),
+        ("Dividendi N-1",     "dividendi_prev"),
+        ("PL Realizzo N-1",   "pl_realizzo_prev"),
+        ("PL Valutazione N-1","pl_valutazione_prev"),
     ]
 
     agg_n = {label: pd.NamedAgg(column=col, aggfunc="sum")
@@ -181,28 +186,41 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     agg_p = {label: pd.NamedAgg(column=col, aggfunc="sum")
              for label, col in voci_prev if col in df.columns}
 
+    # Aggiungi pl_totale_db se disponibile
+    if "pl_totale_db" in df.columns:
+        agg_n["PL Totale N"] = pd.NamedAgg(column="pl_totale_db", aggfunc="sum")
+    if "pl_totale_db_prev" in df.columns:
+        agg_p["PL Totale N-1"] = pd.NamedAgg(column="pl_totale_db_prev", aggfunc="sum")
+
     result = df.groupby("asset_class", dropna=False).agg(**{**agg_n, **agg_p}).reset_index()
     result = result.rename(columns={"asset_class": "Asset Class"})
 
-    # Totali N e N-1
-    cols_n  = [l for l, _ in voci      if l in result.columns]
+    cols_n  = [l for l, _ in voci if l in result.columns]
     cols_n1 = [l for l, _ in voci_prev if l in result.columns]
 
-    result["Totale N"]  = result[cols_n].sum(axis=1)  if cols_n  else 0
-    result["Totale N-1"] = result[cols_n1].sum(axis=1) if cols_n1 else None
-    if cols_n1:
-        result["Variazione"] = result["Totale N"] - result["Totale N-1"]
-        result["Var %"]      = result.apply(
-            lambda r: _var_pct(r["Totale N"], r["Totale N-1"]), axis=1
-        )
+    # Totale N: usa pl_totale_db se presente, altrimenti somma voci
+    if "PL Totale N" in result.columns:
+        result["Totale N"] = result["PL Totale N"]
+    elif cols_n:
+        result["Totale N"] = result[cols_n].sum(axis=1)
 
-    # Riga totale
+    if "PL Totale N-1" in result.columns:
+        result["Totale N-1"] = result["PL Totale N-1"]
+    elif cols_n1:
+        result["Totale N-1"] = result[cols_n1].sum(axis=1)
+
+    if "Totale N-1" in result.columns:
+        result["Variazione"] = result["Totale N"] - result["Totale N-1"]
+        result["Var %"] = result.apply(
+            lambda r: _var_pct(r["Totale N"], r["Totale N-1"]), axis=1)
+
     num_cols = result.select_dtypes("number").columns.tolist()
     tot = result[num_cols].sum()
     tot["Asset Class"] = "Totale"
-    if cols_n1:
+    if "Totale N-1" in result.columns:
         tot["Var %"] = _var_pct(tot["Totale N"], tot["Totale N-1"])
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
+
 
 # ---------------------------------------------------------------------------
 # 5. ANALISI AGGIUNTIVE
@@ -210,8 +228,8 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
 
 def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     cols = ["descrizione", "fair_value"]
-    if "asset_class" in df.columns: cols.insert(1, "asset_class")
-    if "isin"        in df.columns: cols.insert(0, "isin")
+    if "asset_class"    in df.columns: cols.insert(1, "asset_class")
+    if "isin"           in df.columns: cols.insert(0, "isin")
     if "fair_value_prev" in df.columns: cols.append("fair_value_prev")
 
     result = (df[cols].copy()
@@ -223,44 +241,46 @@ def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
 
     if "fair_value_prev" in result.columns:
         result["Variazione"] = result["fair_value"] - result["fair_value_prev"]
-        result["Var %"]      = result.apply(
-            lambda r: _var_pct(r["fair_value"], r["fair_value_prev"]), axis=1
-        )
-        result = result.rename(columns={
-            "fair_value":      "N",
-            "fair_value_prev": "N-1",
-        })
+        result["Var %"] = result.apply(
+            lambda r: _var_pct(r["fair_value"], r["fair_value_prev"]), axis=1)
+        result = result.rename(columns={"fair_value": "N", "fair_value_prev": "N-1"})
     else:
         result = result.rename(columns={"fair_value": "N"})
 
-    result.index      = result.index + 1
+    result.index = result.index + 1
     result.index.name = "Rank"
     return result.rename(columns={
-        "isin":        "ISIN",
-        "descrizione": "Descrizione",
-        "asset_class": "Asset Class",
-    })
+        "isin": "ISIN", "descrizione": "Descrizione", "asset_class": "Asset Class"})
+
 
 def esposizione_valutaria(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "valuta", "fair_value", "fair_value_prev")
 
+
 def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "settore", "fair_value", "fair_value_prev")
 
+
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
-    nav = _sum(df, "fair_value")
+    nav      = _sum(df, "fair_value")
     nav_prev = _sum(df, "fair_value_prev")
     n_titoli = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
-    pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
+
+    # Usa pl_totale_db se disponibile, altrimenti calcola
+    if "pl_totale_db" in df.columns:
+        pl_tot = _sum(df, "pl_totale_db")
+    else:
+        pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
+
     proventi = _sum(df, "cedola") + _sum(df, "dividendi")
 
     return {
-        "nav": nav,
-        "nav_prev": nav_prev,
-        "n_titoli": n_titoli,
-        "pl_totale": pl_tot,
-        "proventi": proventi,
+        "nav":          nav,
+        "nav_prev":     nav_prev,
+        "n_titoli":     n_titoli,
+        "pl_totale":    pl_tot,
+        "proventi":     proventi,
         "rendimento_%": round(pl_tot / nav * 100, 2) if nav > 0 else None,
-        "var_nav": round(nav - nav_prev, 2) if nav_prev else None,
-        "var_nav_%": _var_pct(nav, nav_prev),
+        "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
+        "var_nav_%":    _var_pct(nav, nav_prev),
     }
