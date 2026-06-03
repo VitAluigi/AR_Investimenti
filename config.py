@@ -3,11 +3,6 @@ import os
 # =============================================================================
 # config.py — Impostazioni centrali del sistema
 # =============================================================================
-# MODALITÀ AI:
-#   "claude"  -> usa Anthropic Claude API (PC personale, test)
-#   "azure"   -> usa Azure OpenAI (ambiente aziendale)
-#   "none"    -> solo dizionario sinonimi, nessuna AI
-# =============================================================================
 
 AI_PROVIDER = "claude"
 
@@ -29,14 +24,9 @@ MAPPING_FILE = "modules/learned_mappings.json"
 # --- Report ---
 REPORT_LINGUA         = "italiano"
 REPORT_VALUTA_SIMBOLO = "€"
-REPORT_VALUTA_FORMATO = '#.##0,00 "€"'
+REPORT_VALUTA_FORMATO = '#,##0.00 "€"'
 
 # --- Schema canonico ---
-# Nomenclatura chiara e non ambigua:
-#   book_value     = valore di carico (contabile) N
-#   book_value_prev= valore di carico (contabile) N-1
-#   fair_value     = valore di mercato N
-#   fair_value_prev= valore di mercato N-1
 SCHEMA_CANONICO = {
     "isin":              "Codice ISIN",
     "descrizione":       "Descrizione titolo",
@@ -49,7 +39,6 @@ SCHEMA_CANONICO = {
     # Fair value (valore di mercato)
     "fair_value":        "Fair Value N",
     "fair_value_prev":   "Fair Value N-1",
-    # Fair value hyerarchy
     "fair_value_level":  "Fair Value Level",
     # Classificazione
     "tipo_emittente":    "Tipo Emittente",
@@ -57,6 +46,12 @@ SCHEMA_CANONICO = {
     "paese":             "Paese emittente",
     "valuta":            "Valuta",
     "settore":           "Settore",
+    # Campi SHIP specifici
+    "valuation_area":    "Valuation Area",
+    "company_name":      "Società",
+    "portfolio_name":    "Portafoglio",
+    "valuation_class":   "Valuation Class",
+    "bond_classification":"Bond Classification",
     # Economica
     "cedola":            "Interessi/Cedole N",
     "cedola_prev":       "Interessi/Cedole N-1",
@@ -101,3 +96,11 @@ COLORI = {
     "negativo":  "FFC7CE",
     "alternato": "EBF0FA",
 }
+
+# --- Valori Valuation Area da mostrare nei filtri ---
+VALUATION_AREA_VALIDE = [
+    "Group IFRS9",
+    "Local IFRS9 - IT",
+    "Local GAAP - IT",
+    "Additional Local GAAP - IT - Gestione Separata",
+]
