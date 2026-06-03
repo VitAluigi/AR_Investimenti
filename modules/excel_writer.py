@@ -9,10 +9,11 @@ import pandas as pd
 from datetime import datetime
 
 KPMG_BLU = "00338D"
-BIANCO   = "FFFFFF"
-NERO     = "000000"
-ARIAL    = "Arial"
-FS       = 8   # font size standard
+BIANCO = "FFFFFF"
+NERO = "000000"
+ARIAL = "Arial"
+FS = 8
+FS_Titoli = 14
 
 def _fill(hex_color):
     return PatternFill("solid", fgColor=hex_color)
@@ -37,7 +38,7 @@ def _is_perc_col(col_name):
     return "peso" in n or "var %" in n or col_name == "Var %"
 
 # ---------------------------------------------------------------------------
-# SCRIVI FOGLIO ANALISI (struttura KPMG)
+# SCRIVI FOGLIO ANALISI
 # ---------------------------------------------------------------------------
 
 def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
@@ -60,11 +61,11 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 
     # B2 KPMG
     ws.cell(row=2, column=2, value="KPMG").font = Font(
-        name=ARIAL, size=FS, bold=True, color=NERO)
+        name="KPMG Logo", size=FS_Titoli, bold=True, color=NERO)
 
     # B3 nome analisi
     ws.cell(row=3, column=2, value=nome_analisi).font = Font(
-        name=ARIAL, size=FS, color=NERO)
+        name="KPMG Bold", size=FS_Titoli, color=NERO)
 
     # Riga 5: titolo blu — merge esatto sulle colonne della tabella
     if end_col > start_col:
@@ -146,10 +147,10 @@ def genera_excel(dati: dict,
     unita_label = f"({unita})"
 
     # ------------------------------------------------------------------ #
-    # 00 RIEPILOGO                                                         #
+    # 00 SUMMARY                                                         #
     # ------------------------------------------------------------------ #
     ws_r = wb.active
-    ws_r.title = "00_Riepilogo"
+    ws_r.title = "Summary"
     ws_r.sheet_view.showGridLines = False
 
     ws_r.cell(row=2, column=2, value="KPMG").font = Font(
@@ -207,15 +208,15 @@ def genera_excel(dati: dict,
     # FOGLI ANALISI                                                        #
     # ------------------------------------------------------------------ #
     config_fogli = [
-        ("patrimoniale_asset_class", "01_Patr_AssetClass", "Composizione per Asset Class"),
-        ("patrimoniale_fv_level",    "02_Patr_FVLevel",    "Asset Class per Fair Value Level"),
-        ("rating_governativi",       "03_Rating_Gov",      "Rating – Titoli Governativi"),
-        ("rating_non_governativi",   "04_Rating_NonGov",   "Rating – Titoli Non Governativi"),
-        ("geografia_governativi",    "05_Geografia_Gov",   "Distribuzione Geografica Governativi"),
-        ("economica_completa",       "06_Economica",       "Analisi Economica per Asset Class"),
-        ("top_holdings",             "07_Top10_Holdings",  "Top 10 Holdings per Fair Value"),
-        ("esposizione_valutaria",    "08_Valute",          "Esposizione Valutaria"),
-        ("esposizione_settoriale",   "09_Settori",         "Esposizione Settoriale"),
+        ("patrimoniale_asset_class", "AssetClass", "Composizione per Asset Class"),
+        ("patrimoniale_fv_level",    "FVLevel",    "Asset Class per Fair Value Level"),
+        ("rating_governativi",       "Rating_Gov",      "Rating – Titoli Governativi"),
+        ("rating_non_governativi",   "Rating_NonGov",   "Rating – Titoli Non Governativi"),
+        ("geografia_governativi",    "Geografia_Gov",   "Distribuzione Geografica Governativi"),
+        ("economica_completa",       "Economica",       "Analisi Economica per Asset Class"),
+        ("top_holdings",             "Top10_Holdings",  "Top 10 Holdings per Fair Value"),
+        ("esposizione_valutaria",    "Valute",          "Esposizione Valutaria"),
+        ("esposizione_settoriale",   "Settori",         "Esposizione Settoriale"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
@@ -233,9 +234,6 @@ def genera_excel(dati: dict,
 
     # ------------------------------------------------------------------ #
     # 99 DETTAGLIO COMPLETO (invariato)                                    #
-    # ------------------------------------------------------------------ #
-    # ------------------------------------------------------------------ #
-    # 99 DETTAGLIO COMPLETO                                                #
     # ------------------------------------------------------------------ #
     if "dettaglio" in dati and dati["dettaglio"] is not None:
         ws_det = wb.create_sheet(title="99_Dettaglio")
