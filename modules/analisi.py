@@ -370,11 +370,15 @@ def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
 def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                               df_n1: pd.DataFrame) -> pd.DataFrame:
     """
-    Unisce i due Inventory SHIP (N e N-1) con outer join.
-    Chiave primaria: (isin, valuation_area, valuation_class).
-    - Titoli in entrambi: book_value e book_value_prev valorizzati
-    - Titoli solo in N (acquistati nell'anno): book_value_prev = NaN
-    - Titoli solo in N-1 (venduti nell'anno): book_value = NaN
+    Unisce i due Inventory SHIP (N e N-1) con outer join su isin.
+    Nel DB SHIP ogni ISIN appare una sola volta per sheet, ma la
+    Valuation Area e Valuation Class possono cambiare tra N e N-1
+    per lo stesso titolo — quindi la chiave è solo isin.
+
+    Casistiche gestite:
+    - Titoli in entrambi gli anni: book_value e book_value_prev valorizzati
+    - Titoli solo in N (acquistati): book_value_prev = NaN
+    - Titoli solo in N-1 (venduti): book_value = NaN, book_value_prev valorizzato
     """
     # Determina quale sheet è N e quale N-1 dalla colonna Date
     col_data = next((c for c in df_n.columns if c.lower() == "date"), None)
@@ -383,20 +387,21 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     if data_a and data_b and data_b > data_a:
         df_n, df_n1 = df_n1, df_n
 
-    # Chiave primaria SHIP: isin + valuation_area + valuation_class
-    # (combinazione che identifica univocamente una riga nel db SHIP)
-    chiavi_candidate = ["isin", "valuation_area", "valuation_class"]
-    merge_on = [c for c in chiavi_candidate
+    # Chiave primaria SHIP: Valuation Area + Company + Portfolio + ISIN
+    # (ogni titolo può apparire più volte con VA/Company/Portfolio diversi,
+    # ma la combinazione è unica per riga — e stabile tra N e N-1)
+    chiavi_ship = ["valuation_area", "company_name", "portfolio_name", "isin"]
+    merge_on = [c for c in chiavi_ship
                 if c in df_n.columns and c in df_n1.columns]
-
-    # Fallback minimo su solo isin
     if not merge_on:
         merge_on = [c for c in ["isin"]
                     if c in df_n.columns and c in df_n1.columns]
+    if not merge_on:
+        return df_n
 
-    # Colonne numeriche da N-1 da rinominare con _prev
+    # Colonne numeriche di N-1 da portare come _prev
     cols_numeriche = [c for c in df_n1.columns
-                      if df_n1[c].dtype in ("float64", "int64")
+                      if pd.api.types.is_numeric_dtype(df_n1[c])
                       and c in df_n.columns
                       and c not in merge_on]
 
@@ -406,18 +411,24 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     # outer join: include titoli acquistati (solo N) e venduti (solo N-1)
     result = df_n.merge(df_prev, on=merge_on, how="outer")
 
-    # Per i titoli venduti (solo N-1), recupera le colonne anagrafiche da N-1
-    # riempiendo i NaN delle colonne classificazione
+    # Per i titoli venduti (solo in N-1), le colonne anagrafiche di N sono NaN.
+    # Le recuperiamo da N-1 per permettere le analisi per asset_class, paese ecc.
     cols_anagrafica = [c for c in ["asset_class", "tipo_emittente", "rating",
                                     "paese", "valuta", "settore", "descrizione",
                                     "company_name", "portfolio_name",
+                                    "valuation_area", "valuation_class",
                                     "bond_classification"]
-                       if c in df_n.columns and c in df_n1.columns]
-    for col in cols_anagrafica:
-        if col in result.columns and f"{col}_prev" not in result.columns:
-            # Già gestito dal merge, ma potrebbe avere NaN per i titoli venduti
-            # Non serve fare nulla: il merge outer porta già le colonne di N-1
-            pass
+                       if c in df_n1.columns and c in result.columns]
+    if cols_anagrafica:
+        df_n1_ana = df_n1[merge_on + cols_anagrafica].copy()
+        for col in cols_anagrafica:
+            # Riempi NaN di N con i valori di N-1 (solo per titoli venduti)
+            if col in result.columns:
+                result[col] = result[col].combine_first(
+                    result[merge_on[0]].map(
+                        df_n1_ana.set_index(merge_on[0])[col]
+                    )
+                )
 
     return result
 
@@ -426,7 +437,7 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
                            df_eco_n1: pd.DataFrame) -> pd.DataFrame:
     """
     Unisce i due Income SHIP (N e N-1).
-    Chiave: (isin, valuation_area) — stessa logica outer join del patrimoniale.
+    Chiave: (valuation_area, company_name, portfolio_name, isin) — stessa del patrimoniale.
     """
     col_data = next((c for c in df_eco_n.columns
                      if c.lower() in ("date to", "dateto", "date_to")), None)
@@ -435,12 +446,15 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
     if data_a and data_b and data_b > data_a:
         df_eco_n, df_eco_n1 = df_eco_n1, df_eco_n
 
-    chiavi_candidate = ["isin", "valuation_area"]
-    merge_on = [c for c in chiavi_candidate
+    # Stessa chiave del patrimoniale
+    chiavi_ship = ["valuation_area", "company_name", "portfolio_name", "isin"]
+    merge_on = [c for c in chiavi_ship
                 if c in df_eco_n.columns and c in df_eco_n1.columns]
     if not merge_on:
         merge_on = [c for c in ["isin"]
                     if c in df_eco_n.columns and c in df_eco_n1.columns]
+    if not merge_on:
+        return df_eco_n
 
     eco_canonici = ["cedola", "dividendi", "pl_realizzo",
                     "pl_valutazione", "pl_totale_db"]
