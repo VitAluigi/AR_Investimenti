@@ -72,7 +72,7 @@ with st.sidebar:
     divisore = divisori[unita]
 
     st.divider()
-    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate dal tuo file.")
+    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate dal file.")
 
 # ---------------------------------------------------------------------------
 # UPLOAD FILE
