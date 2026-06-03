@@ -261,7 +261,8 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
     else:
         pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
 
-    proventi = _sum(df, "cedola") + _sum(df, "dividendi")
+    proventi   = _sum(df, "cedola") + _sum(df, "dividendi")
+    pl_realizzo = _sum(df, "pl_realizzo")
 
     return {
         "nav":          nav,
