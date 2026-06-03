@@ -9,7 +9,7 @@ Sistema intelligente per generare report Excel e Word da qualsiasi database grez
 ```
 portafoglio_ai/
 - config.py                  <- Configura Azure OpenAI
-- main.py                    <- Orchestratore principale
+- main.py                    <- Codice principale
 - app.py                     <- Interfaccia web Streamlit
 - requirements.txt
 - modules/
