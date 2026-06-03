@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/excel_writer.py — Generazione Excel formattato
+# modules/excel_writer.py - Generazione Excel formattato
 # =============================================================================
 
 from openpyxl import Workbook
