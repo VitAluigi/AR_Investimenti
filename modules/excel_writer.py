@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/excel_writer.py — Generazione Excel formattato
+# modules/excel_writer.py - Generazione Excel formattato
 # =============================================================================
 
 from openpyxl import Workbook
@@ -26,18 +26,18 @@ def _border_analisi(c_idx, start_col, end_col, is_last_row=False):
     s_blu  = Side(style="thin", color=KPMG_BLU)
     s_none = Side(style=None)
     return Border(
-        left   = s_blu  if c_idx == start_col else s_none,
-        right  = s_blu  if c_idx == end_col   else s_none,
+        left   = s_blu if c_idx == start_col else s_none,
+        right  = s_blu if c_idx == end_col   else s_none,
         top    = s_none,
-        bottom = s_blu  if is_last_row else s_none,
+        bottom = s_blu if is_last_row else s_none,
     )
 
 def _border_header(c_idx, start_col, end_col):
     s_blu  = Side(style="thin", color=KPMG_BLU)
     s_none = Side(style=None)
     return Border(
-        left   = s_blu  if c_idx == start_col else s_none,
-        right  = s_blu  if c_idx == end_col   else s_none,
+        left   = s_blu if c_idx == start_col else s_none,
+        right  = s_blu if c_idx == end_col   else s_none,
         top    = s_blu,
         bottom = s_blu,
     )
@@ -52,14 +52,15 @@ def _div(val, divisore):
 
 def _is_perc_col(col_name):
     n = str(col_name).lower()
-    return "peso" in n or "var %" in n or "diff %" in n or col_name == "Var %"
+    return "peso" in n or "var %" in n or "diff %" in n
 
 def _is_pl_col(col_name):
-    """Colonne che ricevono colore verde/rosso."""
     n = str(col_name).lower()
     return any(k in n for k in [
-        "realizzo", "valutazione", "variazione", "var %", "differenza", "diff %", "pl totale"
+        "realizzo", "valutazione", "variazione", "var %",
+        "differenza", "diff %", "pl totale"
     ])
+
 
 # ---------------------------------------------------------------------------
 # SCRIVI FOGLIO ANALISI
@@ -212,7 +213,7 @@ def genera_excel(dati: dict,
         ("rating_non_governativi",   "Rating_NonGov",  "Rating – Titoli Non Governativi"),
         ("geografia_governativi",    "Geografia_Gov",  "Distribuzione Geografica Governativi"),
         ("economica_completa",       "Economica",      "Analisi Economica per Asset Class"),
-        ("top_holdings",             "Top10_Holdings", "Top 10 Holdings per Fair Value"),
+        ("top_holdings",             "Top10_Holdings", "Top 10 Holdings per Book Value"),
         ("esposizione_valutaria",    "Valute",         "Esposizione Valutaria"),
         ("esposizione_settoriale",   "Settori",        "Esposizione Settoriale"),
         ("confronto_bv_fv",         "BV_vs_FV",       "Book Value vs Fair Value per Asset Class"),
@@ -243,10 +244,11 @@ def genera_excel(dati: dict,
             "asset_class":         "Asset Class",
             "quantita":            "Quantità",
             "prezzo_carico":       "Prezzo Carico",
+            "book_value":          "Book Value N",
+            "book_value_prev":     "Book Value N-1",
             "fair_value":          "Fair Value N",
             "fair_value_prev":     "Fair Value N-1",
             "fair_value_level":    "Fair Value Level",
-            "fair_value_mercato":  "Fair Value Mercato",
             "tipo_emittente":      "Tipo Emittente",
             "rating":              "Rating",
             "paese":               "Paese",
