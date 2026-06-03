@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/analisi.py — Capability discovery e calcoli finanziari
+# modules/analisi.py - Capability discovery e calcoli finanziari
 # =============================================================================
 
 import pandas as pd
@@ -28,7 +28,7 @@ def report_analisi(disponibili: dict) -> str:
     attive   = [n for n, v in disponibili.items() if v]
     inattive = [n for n, v in disponibili.items() if not v]
     lines = [f"Analisi disponibili ({len(attive)}/{len(disponibili)}):"]
-    for a in attive:   lines.append(f"  OK {a}")
+    for a in attive: lines.append(f"  OK {a}")
     for i in inattive: lines.append(f"  KO {i}")
     return "\n".join(lines)
 
@@ -72,11 +72,11 @@ def _build_confronto(df_base: pd.DataFrame,
     agg = agg.sort_values("N", ascending=False)
     totale = {
         label_display: "Totale",
-        "N":           tot_n,
-        "Peso %":      100.0,
-        "N-1":         tot_n1,
+        "N": tot_n,
+        "Peso %": 100.0,
+        "N-1": tot_n1,
         "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
-        "Var %":       _var_pct(tot_n, tot_n1),
+        "Var %": _var_pct(tot_n, tot_n1),
     }
     return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
 
@@ -161,15 +161,15 @@ def confronto_bv_fv(df: pd.DataFrame) -> pd.DataFrame:
 
 def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     voci = [
-        ("Cedole/Int. N",    "cedola"),
-        ("Dividendi N",      "dividendi"),
-        ("PL Realizzo N",    "pl_realizzo"),
+        ("Cedole/Int. N", "cedola"),
+        ("Dividendi N", "dividendi"),
+        ("PL Realizzo N", "pl_realizzo"),
         ("PL Valutazione N", "pl_valutazione"),
     ]
     voci_prev = [
-        ("Cedole/Int. N-1",    "cedola_prev"),
-        ("Dividendi N-1",      "dividendi_prev"),
-        ("PL Realizzo N-1",    "pl_realizzo_prev"),
+        ("Cedole/Int. N-1", "cedola_prev"),
+        ("Dividendi N-1", "dividendi_prev"),
+        ("PL Realizzo N-1", "pl_realizzo_prev"),
         ("PL Valutazione N-1", "pl_valutazione_prev"),
     ]
 
@@ -213,13 +213,13 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 5. ANALISI AGGIUNTIVE — PORTAFOGLIO
+# 5. ANALISI AGGIUNTIVE - PORTAFOGLIO
 # ---------------------------------------------------------------------------
 
 def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     cols = ["descrizione", "book_value"]
-    if "asset_class"     in df.columns: cols.insert(1, "asset_class")
-    if "isin"            in df.columns: cols.insert(0, "isin")
+    if "asset_class" in df.columns: cols.insert(1, "asset_class")
+    if "isin" in df.columns: cols.insert(0, "isin")
     if "book_value_prev" in df.columns: cols.append("book_value_prev")
 
     result = (df[cols].copy()
@@ -276,26 +276,26 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 6. TOP OPERAZIONI — TRANSACTION REPORT
+# 6. TOP OPERAZIONI - TRANSACTION REPORT
 # ---------------------------------------------------------------------------
 
-# Mappa colonne Transaction Report → nomi canonici interni
+# Mappa colonne Transaction Report -> nomi canonici interni
 _TX_COL_MAP = {
-    "position value date":                "data",
+    "position value date": "data",
     "business transaction category name": "tipo",
-    "isin code":                          "isin",
-    "security id name":                   "descrizione",
-    "product category name":              "asset_class",
-    "nominal/units":                      "nominale",
-    "transaction amount lc":              "importo_lc",
-    "transaction amount pc":              "importo_pc",
-    "realised gain loss security lc":     "pl_titolo_lc",
-    "realised gain loss security pc":     "pl_titolo_pc",
-    "realised gain loss fx lc":           "pl_cambio_lc",
-    "realised gain loss lc":              "pl_totale_lc",
-    "issue currency":                     "valuta",
-    "counterparty name":                  "controparte",
-    "operation price pc":                 "prezzo",
+    "isin code": "isin",
+    "security id name": "descrizione",
+    "product category name": "asset_class",
+    "nominal/units": "nominale",
+    "transaction amount lc": "importo_lc",
+    "transaction amount pc": "importo_pc",
+    "realised gain loss security lc": "pl_titolo_lc",
+    "realised gain loss security pc": "pl_titolo_pc",
+    "realised gain loss fx lc": "pl_cambio_lc",
+    "realised gain loss lc": "pl_totale_lc",
+    "issue currency": "valuta",
+    "counterparty name": "controparte",
+    "operation price pc": "prezzo",
 }
 
 _TX_TIPI_RILEVANTI = {"sale", "purchase"}
@@ -346,16 +346,16 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
 
     # Etichette leggibili per Excel
     etichette = {
-        "data":        "Data",
-        "tipo":        "Tipo",
-        "isin":        "ISIN",
+        "data": "Data",
+        "tipo": "Tipo",
+        "isin": "ISIN",
         "descrizione": "Titolo",
         "asset_class": "Asset Class",
-        "valuta":      "Valuta",
-        "nominale":    "Nominale",
-        "prezzo":      "Prezzo",
-        "importo_lc":  "Importo LC",
-        "importo_pc":  "Importo PC",
+        "valuta": "Valuta",
+        "nominale": "Nominale",
+        "prezzo": "Prezzo",
+        "importo_lc": "Importo LC",
+        "importo_pc": "Importo PC",
         "pl_titolo_lc":"P/L Titolo LC",
         "pl_titolo_pc":"P/L Titolo PC",
         "pl_cambio_lc":"P/L Cambio LC",
@@ -364,7 +364,6 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     }
     df = df.rename(columns=etichette)
     return df
-
 
 # ---------------------------------------------------------------------------
 # 7. FUNZIONI SHIP — unione N / N-1
