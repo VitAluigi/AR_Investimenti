@@ -21,6 +21,33 @@ st.markdown("""
 <style>
 .ok  { color: #28a745; font-weight:bold; }
 .no  { color: #dc3545; }
+
+/* Sfondo app KPMG blu */
+.stApp {
+    background-color: rgb(0, 51, 141);
+}
+
+/* Testo bianco su sfondo blu */
+.stApp, .stApp p, .stApp label, .stApp h1, .stApp h2, .stApp h3 {
+    color: white;
+}
+
+/* Sidebar con sfondo leggermente più scuro */
+[data-testid="stSidebar"] {
+    background-color: rgb(0, 40, 110);
+}
+
+/* Bottoni bianchi */
+.stButton > button {
+    background-color: white;
+    color: rgb(0, 51, 141);
+    font-weight: bold;
+}
+
+/* Metriche testo bianco */
+[data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+    color: white;
+}
 </style>
 """, unsafe_allow_html=True)
 
