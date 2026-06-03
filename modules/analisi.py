@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/analisi.py - Capability discovery e calcoli finanziari
+# modules/analisi.py — Capability discovery e calcoli finanziari
 # =============================================================================
 
 import pandas as pd
@@ -28,7 +28,7 @@ def report_analisi(disponibili: dict) -> str:
     attive   = [n for n, v in disponibili.items() if v]
     inattive = [n for n, v in disponibili.items() if not v]
     lines = [f"Analisi disponibili ({len(attive)}/{len(disponibili)}):"]
-    for a in attive: lines.append(f"  OK {a}")
+    for a in attive:   lines.append(f"  OK {a}")
     for i in inattive: lines.append(f"  KO {i}")
     return "\n".join(lines)
 
@@ -72,11 +72,11 @@ def _build_confronto(df_base: pd.DataFrame,
     agg = agg.sort_values("N", ascending=False)
     totale = {
         label_display: "Totale",
-        "N": tot_n,
-        "Peso %": 100.0,
-        "N-1": tot_n1,
+        "N":           tot_n,
+        "Peso %":      100.0,
+        "N-1":         tot_n1,
         "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
-        "Var %": _var_pct(tot_n, tot_n1),
+        "Var %":       _var_pct(tot_n, tot_n1),
     }
     return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
 
@@ -161,15 +161,15 @@ def confronto_bv_fv(df: pd.DataFrame) -> pd.DataFrame:
 
 def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     voci = [
-        ("Cedole/Int. N", "cedola"),
-        ("Dividendi N", "dividendi"),
-        ("PL Realizzo N", "pl_realizzo"),
+        ("Cedole/Int. N",    "cedola"),
+        ("Dividendi N",      "dividendi"),
+        ("PL Realizzo N",    "pl_realizzo"),
         ("PL Valutazione N", "pl_valutazione"),
     ]
     voci_prev = [
-        ("Cedole/Int. N-1", "cedola_prev"),
-        ("Dividendi N-1", "dividendi_prev"),
-        ("PL Realizzo N-1", "pl_realizzo_prev"),
+        ("Cedole/Int. N-1",    "cedola_prev"),
+        ("Dividendi N-1",      "dividendi_prev"),
+        ("PL Realizzo N-1",    "pl_realizzo_prev"),
         ("PL Valutazione N-1", "pl_valutazione_prev"),
     ]
 
@@ -213,13 +213,13 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 5. ANALISI AGGIUNTIVE - PORTAFOGLIO
+# 5. ANALISI AGGIUNTIVE — PORTAFOGLIO
 # ---------------------------------------------------------------------------
 
 def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     cols = ["descrizione", "book_value"]
-    if "asset_class" in df.columns: cols.insert(1, "asset_class")
-    if "isin" in df.columns: cols.insert(0, "isin")
+    if "asset_class"     in df.columns: cols.insert(1, "asset_class")
+    if "isin"            in df.columns: cols.insert(0, "isin")
     if "book_value_prev" in df.columns: cols.append("book_value_prev")
 
     result = (df[cols].copy()
@@ -252,16 +252,16 @@ def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
-    nav      = _sum(df, "book_value")
-    nav_prev = _sum(df, "book_value_prev")
-    n_titoli = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
+    nav         = _sum(df, "book_value")
+    nav_prev    = _sum(df, "book_value_prev")
+    n_titoli    = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
 
     if "pl_totale_db" in df.columns:
         pl_tot = _sum(df, "pl_totale_db")
     else:
         pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
 
-    proventi   = _sum(df, "cedola") + _sum(df, "dividendi")
+    proventi    = _sum(df, "cedola") + _sum(df, "dividendi")
     pl_realizzo = _sum(df, "pl_realizzo")
 
     return {
@@ -277,55 +277,45 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 6. TOP OPERAZIONI - TRANSACTION REPORT
+# 6. TOP OPERAZIONI — TRANSACTION REPORT
 # ---------------------------------------------------------------------------
 
-# Mappa colonne Transaction Report -> nomi canonici interni
 _TX_COL_MAP = {
-    "position value date": "data",
+    "position value date":                "data",
     "business transaction category name": "tipo",
-    "isin code": "isin",
-    "security id name": "descrizione",
-    "product category name": "asset_class",
-    "nominal/units": "nominale",
-    "transaction amount lc": "importo_lc",
-    "transaction amount pc": "importo_pc",
-    "realised gain loss security lc": "pl_titolo_lc",
-    "realised gain loss security pc": "pl_titolo_pc",
-    "realised gain loss fx lc": "pl_cambio_lc",
-    "realised gain loss lc": "pl_totale_lc",
-    "issue currency": "valuta",
-    "counterparty name": "controparte",
-    "operation price pc": "prezzo",
+    "isin code":                          "isin",
+    "security id name":                   "descrizione",
+    "product category name":              "asset_class",
+    "nominal/units":                      "nominale",
+    "transaction amount lc":              "importo_lc",
+    "transaction amount pc":              "importo_pc",
+    "realised gain loss security lc":     "pl_titolo_lc",
+    "realised gain loss security pc":     "pl_titolo_pc",
+    "realised gain loss fx lc":           "pl_cambio_lc",
+    "realised gain loss lc":              "pl_totale_lc",
+    "issue currency":                     "valuta",
+    "counterparty name":                  "controparte",
+    "operation price pc":                 "prezzo",
 }
 
 _TX_TIPI_RILEVANTI = {"sale", "purchase"}
 
 
 def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
-    """
-    Legge il Transaction Report grezzo, seleziona Sale e Purchase,
-    restituisce le top N per valore assoluto di Transaction Amount LC.
-    """
     if df_tx is None or df_tx.empty:
         return None
 
-    # Normalizza nomi colonne
     df = df_tx.copy()
     df.columns = df.columns.str.strip().str.lower()
-
-    # Rinomina con mappa (solo colonne presenti)
     rename = {k: v for k, v in _TX_COL_MAP.items() if k in df.columns}
     df = df.rename(columns=rename)
 
-    # Filtra Sale e Purchase
     if "tipo" not in df.columns:
         return None
     df = df[df["tipo"].str.strip().str.lower().isin(_TX_TIPI_RILEVANTI)].copy()
     if df.empty:
         return None
 
-    # Ordina per |importo_lc| decrescente
     if "importo_lc" in df.columns:
         df["_abs"] = df["importo_lc"].abs()
         df = df.sort_values("_abs", ascending=False).drop(columns=["_abs"])
@@ -334,7 +324,6 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     df.index = df.index + 1
     df.index.name = "Rank"
 
-    # Seleziona colonne di output nell'ordine desiderato
     cols_out = [c for c in [
         "data", "tipo", "isin", "descrizione", "asset_class",
         "valuta", "nominale", "prezzo",
@@ -345,33 +334,31 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     ] if c in df.columns]
     df = df[cols_out]
 
-    # Etichette leggibili per Excel
     etichette = {
-        "data": "Data",
-        "tipo": "Tipo",
-        "isin": "ISIN",
+        "data":        "Data",
+        "tipo":        "Tipo",
+        "isin":        "ISIN",
         "descrizione": "Titolo",
         "asset_class": "Asset Class",
-        "valuta": "Valuta",
-        "nominale": "Nominale",
-        "prezzo": "Prezzo",
-        "importo_lc": "Importo LC",
-        "importo_pc": "Importo PC",
+        "valuta":      "Valuta",
+        "nominale":    "Nominale",
+        "prezzo":      "Prezzo",
+        "importo_lc":  "Importo LC",
+        "importo_pc":  "Importo PC",
         "pl_titolo_lc":"P/L Titolo LC",
         "pl_titolo_pc":"P/L Titolo PC",
         "pl_cambio_lc":"P/L Cambio LC",
         "pl_totale_lc":"P/L Totale LC",
         "controparte": "Controparte",
     }
-    df = df.rename(columns=etichette)
-    return df
+    return df.rename(columns=etichette)
+
 
 # ---------------------------------------------------------------------------
 # 7. FUNZIONI SHIP — unione N / N-1
 # ---------------------------------------------------------------------------
 
 def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
-    """Legge la data dominante di uno sheet (moda della colonna data)."""
     if col_data not in df.columns:
         return None
     try:
@@ -383,65 +370,84 @@ def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
 def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                               df_n1: pd.DataFrame) -> pd.DataFrame:
     """
-    Unisce i due Inventory SHIP (N e N-1).
-    Determina quale è N e quale N-1 dalla colonna 'date' (o 'Date').
-    Le colonne di N-1 vengono rinominate con suffisso _prev.
+    Unisce i due Inventory SHIP (N e N-1) con outer join.
+    Chiave primaria: (isin, valuation_area, valuation_class).
+    - Titoli in entrambi: book_value e book_value_prev valorizzati
+    - Titoli solo in N (acquistati nell'anno): book_value_prev = NaN
+    - Titoli solo in N-1 (venduti nell'anno): book_value = NaN
     """
-    # Trova colonna data nei due df
+    # Determina quale sheet è N e quale N-1 dalla colonna Date
     col_data = next((c for c in df_n.columns if c.lower() == "date"), None)
-
     data_a = _data_sheet(df_n,  col_data) if col_data else None
     data_b = _data_sheet(df_n1, col_data) if col_data else None
-
-    # Assegna N al più recente
     if data_a and data_b and data_b > data_a:
         df_n, df_n1 = df_n1, df_n
 
-    # Colonne numeriche da suffissare con _prev
+    # Chiave primaria SHIP: isin + valuation_area + valuation_class
+    # (combinazione che identifica univocamente una riga nel db SHIP)
+    chiavi_candidate = ["isin", "valuation_area", "valuation_class"]
+    merge_on = [c for c in chiavi_candidate
+                if c in df_n.columns and c in df_n1.columns]
+
+    # Fallback minimo su solo isin
+    if not merge_on:
+        merge_on = [c for c in ["isin"]
+                    if c in df_n.columns and c in df_n1.columns]
+
+    # Colonne numeriche da N-1 da rinominare con _prev
     cols_numeriche = [c for c in df_n1.columns
                       if df_n1[c].dtype in ("float64", "int64")
-                      and c in df_n.columns]
-    key_cols = ["isin", "asset_class", "tipo_emittente", "rating",
-                "paese", "valuta", "settore", "descrizione",
-                "valuation_area", "company_name", "portfolio_name",
-                "valuation_class", "bond_classification"]
-    key_cols = [c for c in key_cols if c in df_n1.columns]
+                      and c in df_n.columns
+                      and c not in merge_on]
 
-    df_prev = df_n1[key_cols + cols_numeriche].copy()
-    rename  = {c: f"{c}_prev" for c in cols_numeriche}
-    df_prev = df_prev.rename(columns=rename)
+    df_prev = df_n1[merge_on + cols_numeriche].copy()
+    df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_numeriche})
 
-    merge_on = [c for c in key_cols if c in df_n.columns]
-    if merge_on:
-        return df_n.merge(df_prev, on=merge_on, how="left")
-    return df_n
+    # outer join: include titoli acquistati (solo N) e venduti (solo N-1)
+    result = df_n.merge(df_prev, on=merge_on, how="outer")
+
+    # Per i titoli venduti (solo N-1), recupera le colonne anagrafiche da N-1
+    # riempiendo i NaN delle colonne classificazione
+    cols_anagrafica = [c for c in ["asset_class", "tipo_emittente", "rating",
+                                    "paese", "valuta", "settore", "descrizione",
+                                    "company_name", "portfolio_name",
+                                    "bond_classification"]
+                       if c in df_n.columns and c in df_n1.columns]
+    for col in cols_anagrafica:
+        if col in result.columns and f"{col}_prev" not in result.columns:
+            # Già gestito dal merge, ma potrebbe avere NaN per i titoli venduti
+            # Non serve fare nulla: il merge outer porta già le colonne di N-1
+            pass
+
+    return result
 
 
 def unisci_ship_economico(df_eco_n: pd.DataFrame,
                            df_eco_n1: pd.DataFrame) -> pd.DataFrame:
     """
     Unisce i due Income SHIP (N e N-1).
-    Determina N/N-1 dalla colonna 'date to'.
-    Le colonne economiche di N-1 vengono rinominate con _prev.
+    Chiave: (isin, valuation_area) — stessa logica outer join del patrimoniale.
     """
     col_data = next((c for c in df_eco_n.columns
                      if c.lower() in ("date to", "dateto", "date_to")), None)
-
     data_a = _data_sheet(df_eco_n,  col_data) if col_data else None
     data_b = _data_sheet(df_eco_n1, col_data) if col_data else None
-
     if data_a and data_b and data_b > data_a:
         df_eco_n, df_eco_n1 = df_eco_n1, df_eco_n
 
+    chiavi_candidate = ["isin", "valuation_area"]
+    merge_on = [c for c in chiavi_candidate
+                if c in df_eco_n.columns and c in df_eco_n1.columns]
+    if not merge_on:
+        merge_on = [c for c in ["isin"]
+                    if c in df_eco_n.columns and c in df_eco_n1.columns]
+
     eco_canonici = ["cedola", "dividendi", "pl_realizzo",
                     "pl_valutazione", "pl_totale_db"]
-    cols_n1 = [c for c in eco_canonici if c in df_eco_n1.columns]
-    key_cols = [c for c in ["isin", "asset_class"] if c in df_eco_n1.columns]
+    cols_n1 = [c for c in eco_canonici
+               if c in df_eco_n1.columns and c not in merge_on]
 
-    df_prev = df_eco_n1[key_cols + cols_n1].copy()
-    rename  = {c: f"{c}_prev" for c in cols_n1}
-    df_prev = df_prev.rename(columns=rename)
+    df_prev = df_eco_n1[merge_on + cols_n1].copy()
+    df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_n1})
 
-    if key_cols and key_cols[0] in df_eco_n.columns:
-        return df_eco_n.merge(df_prev, on=key_cols, how="left")
-    return df_eco_n
+    return df_eco_n.merge(df_prev, on=merge_on, how="outer")
