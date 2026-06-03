@@ -89,7 +89,7 @@ with col2:
 
 with st.expander("Dettaglio mapping colonne"):
     mapping_display = [
-        {"Colonna originale": k, "Campo canonico": v or "❌ Non riconosciuta"}
+        {"Colonna originale": k, "Campo canonico": v or "Non riconosciuta"}
         for k, v in mapping.items()
     ]
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
@@ -156,7 +156,7 @@ c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 # ---------------------------------------------------------------------------
 # SEZIONE 4: ANTEPRIMA
 # ---------------------------------------------------------------------------
-with st.expander("👁️ Anteprima dati (prime 20 righe)"):
+with st.expander("Anteprima dati"):
     st.dataframe(df_mapped.head(20), use_container_width=True)
 
 # ---------------------------------------------------------------------------
