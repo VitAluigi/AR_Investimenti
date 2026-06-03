@@ -20,14 +20,12 @@ SINONIMI = {
     "book value finale":         "book_value",
 
     # ---- BOOK VALUE PREV (valore contabile N-1) ----
-    # Non contengono "n-1" quindi vanno qui, non in SINONIMI_PREV
     "valore carico lc iniziale": "book_value_prev",
     "valore carico iniziale":    "book_value_prev",
     "book value iniziale":       "book_value_prev",
     "nominale iniziale":         "book_value_prev",
 
     # ---- FAIR VALUE (valore di mercato N) ----
-    "fair value level":          "fair_value_level",  # PRIMA di "fair value"
     "valore lc mercato finale":  "fair_value",
     "valore mercato finale":     "fair_value",
     "prezzo finale":             "fair_value",
@@ -39,7 +37,20 @@ SINONIMI = {
     "market value":              "fair_value",
     "controvalore":              "fair_value",
 
+    # ---- FAIR VALUR PREV (valore di mercato N-1) ----
+    "valore lc mercato iniziale":  "fair_value_prev",
+    "valore mercato iniziale":     "fair_value_prev",
+    "prezzo iniziale":             "fair_value_prev",
+    "fair value iniziale":         "fair_value_prev",
+    "valore di mercato iniziale":  "fair_value_prev",
+    "mtm iniziale":                "fair_value_prev",
+    "mark to market iniziale":     "fair_value_prev",
+    "valore corrente iniziale":    "fair_value_prev",
+    "market valueiniziale":        "fair_value_prev",
+    "controvalore iniziale":       "fair_value_prev",
+    
     # ---- FAIR VALUE LEVEL ----
+    "fair value level":          "fair_value_level",
     "fv level":                  "fair_value_level",
     "level":                     "fair_value_level",
 
