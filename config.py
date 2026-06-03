@@ -29,7 +29,7 @@ MAPPING_FILE = "modules/learned_mappings.json"
 # --- Report ---
 REPORT_LINGUA         = "italiano"
 REPORT_VALUTA_SIMBOLO = "€"
-REPORT_VALUTA_FORMATO = '#,##0.00 "€"'
+REPORT_VALUTA_FORMATO = '#.##0,00 "€"'
 
 # --- Schema canonico ---
 # Nomenclatura chiara e non ambigua:
