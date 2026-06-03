@@ -49,6 +49,7 @@ SCHEMA_CANONICO = {
     # Fair value (valore di mercato)
     "fair_value":        "Fair Value N",
     "fair_value_prev":   "Fair Value N-1",
+    # Fair value hyerarchy
     "fair_value_level":  "Fair Value Level",
     # Classificazione
     "tipo_emittente":    "Tipo Emittente",
