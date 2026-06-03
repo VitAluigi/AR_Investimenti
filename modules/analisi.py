@@ -251,6 +251,129 @@ def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "settore", "book_value", "book_value_prev")
 
 
+
+def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Distribuzione del Book Value per bucket di scadenza.
+    Considera solo i titoli con scadenza valorizzata (esclude Azioni, Fondi ecc.).
+    Bucket: 0-1, 1-3, 3-5, 5-10, 10-20, 20-30, >30 anni.
+    """
+    BUCKET_ORDER = ["0-1 anni", "1-3 anni", "3-5 anni",
+                    "5-10 anni", "10-20 anni", "20-30 anni", ">30 anni"]
+    PERPETUAL   = "Perpetual"
+
+    oggi = pd.Timestamp.today().normalize()
+
+    def _bucket(scad):
+        if pd.isna(scad):
+            return None
+        try:
+            scad = pd.Timestamp(scad)
+        except Exception:
+            return None
+        anni = (scad - oggi).days / 365.25
+        if anni < 0:      return "Scaduto"
+        if anni <= 1:     return "0-1 anni"
+        if anni <= 3:     return "1-3 anni"
+        if anni <= 5:     return "3-5 anni"
+        if anni <= 10:    return "5-10 anni"
+        if anni <= 20:    return "10-20 anni"
+        if anni <= 30:    return "20-30 anni"
+        return ">30 anni"
+
+    df = df.copy()
+    df["_bucket"] = df["scadenza"].apply(_bucket)
+
+    # Escludi righe senza scadenza (Azioni, Fondi ecc.)
+    df_filt = df[df["_bucket"].notna()].copy()
+    if df_filt.empty:
+        return pd.DataFrame(columns=["Bucket", "N", "Peso %", "N-1", "Variazione", "Var %"])
+
+    agg = df_filt.groupby("_bucket")["book_value"].sum().reset_index()
+    agg.columns = ["Bucket", "N"]
+    tot_n = agg["N"].sum()
+    agg["Peso %"] = (agg["N"] / tot_n * 100).round(2) if tot_n else 0
+
+    # N-1
+    if "book_value_prev" in df.columns:
+        agg_prev = df_filt.groupby("_bucket")["book_value_prev"].sum().reset_index()
+        agg_prev.columns = ["Bucket", "N-1"]
+        agg = agg.merge(agg_prev, on="Bucket", how="left")
+        agg["Variazione"] = (agg["N"] - agg["N-1"]).round(2)
+        agg["Var %"]      = agg.apply(lambda r: _var_pct(r["N"], r["N-1"]), axis=1)
+        tot_n1 = agg["N-1"].sum()
+    else:
+        agg["N-1"] = agg["Variazione"] = agg["Var %"] = None
+        tot_n1 = None
+
+    # Ordina per bucket logico
+    order_map = {b: i for i, b in enumerate(BUCKET_ORDER)}
+    agg["_ord"] = agg["Bucket"].map(lambda x: order_map.get(x, 99))
+    agg = agg.sort_values("_ord").drop(columns=["_ord"])
+
+    totale = {
+        "Bucket":      "Totale",
+        "N":           tot_n,
+        "Peso %":      100.0,
+        "N-1":         tot_n1,
+        "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
+        "Var %":       _var_pct(tot_n, tot_n1),
+    }
+    return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
+
+
+def duration_ponderata(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Duration media ponderata per Book Value, aggregata per asset class.
+    Considera solo i titoli con modified_duration valorizzata.
+    Duration ponderata = sum(BV_i * dur_i) / sum(BV_i)
+    """
+    df = df.copy()
+    df_filt = df[df["modified_duration"].notna() & df["book_value"].notna()].copy()
+    if df_filt.empty:
+        return pd.DataFrame(columns=["Asset Class", "Dur. Ponderata N",
+                                      "Book Value N", "Dur. Ponderata N-1"])
+
+    df_filt["_bv_dur"] = df_filt["book_value"] * df_filt["modified_duration"]
+
+    agg = df_filt.groupby("asset_class", dropna=False).agg(
+        bv_sum =("book_value", "sum"),
+        bv_dur =("_bv_dur", "sum"),
+    ).reset_index()
+    agg.columns = ["Asset Class", "Book Value N", "_bv_dur"]
+    agg["Dur. Ponderata N"] = (agg["_bv_dur"] / agg["Book Value N"]).round(3)
+    agg = agg.drop(columns=["_bv_dur"])
+
+    # N-1
+    if "book_value_prev" in df.columns and "modified_duration" in df.columns:
+        df_filt_n1 = df[df["modified_duration"].notna() & df["book_value_prev"].notna()].copy()
+        if not df_filt_n1.empty:
+            df_filt_n1["_bv_dur_prev"] = df_filt_n1["book_value_prev"] * df_filt_n1["modified_duration"]
+            agg_prev = df_filt_n1.groupby("asset_class", dropna=False).agg(
+                bv_prev=("book_value_prev", "sum"),
+                bv_dur_prev=("_bv_dur_prev", "sum"),
+            ).reset_index()
+            agg_prev.columns = ["Asset Class", "_bv_prev", "_bv_dur_prev"]
+            agg_prev["Dur. Ponderata N-1"] = (agg_prev["_bv_dur_prev"] / agg_prev["_bv_prev"]).round(3)
+            agg_prev = agg_prev[["Asset Class", "Dur. Ponderata N-1"]]
+            agg = agg.merge(agg_prev, on="Asset Class", how="left")
+
+    agg = agg.sort_values("Book Value N", ascending=False)
+
+    # Riga totale — duration ponderata sull'intero portafoglio
+    tot_bv  = df_filt["book_value"].sum()
+    tot_dur = df_filt["_bv_dur"].sum()
+    tot_row = {"Asset Class": "Totale", "Book Value N": tot_bv,
+               "Dur. Ponderata N": round(tot_dur / tot_bv, 3) if tot_bv else None}
+    if "Dur. Ponderata N-1" in agg.columns:
+        if not df_filt_n1.empty:
+            tot_bv_n1  = df_filt_n1["book_value_prev"].sum()
+            tot_dur_n1 = df_filt_n1["_bv_dur_prev"].sum()
+            tot_row["Dur. Ponderata N-1"] = round(tot_dur_n1 / tot_bv_n1, 3) if tot_bv_n1 else None
+
+    return pd.concat([agg, pd.DataFrame([tot_row])], ignore_index=True)
+
+
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
     nav         = _sum(df, "book_value")
     nav_prev    = _sum(df, "book_value_prev")
