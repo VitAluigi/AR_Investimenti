@@ -111,11 +111,13 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
     if disponibili.get("esposizione_settoriale"):
         dati["esposizione_settoriale"] = esposizione_settoriale(df)
 
-    # Confronto Book Value vs Fair Value di mercato (se disponibile)
-    if "fair_value_mercato" in df.columns and "asset_class" in df.columns:
+    # Confronto BV vs FV — richiede entrambe le colonne
+    if (disponibili.get("confronto_bv_fv") and
+            "book_value" in df.columns and
+            "fair_value" in df.columns and
+            "asset_class" in df.columns):
         dati["confronto_bv_fv"] = confronto_bv_fv(df)
 
-    # Sempre: dettaglio completo
     dati["dettaglio"] = df
 
     print(f"    → Analisi calcolate: {len(dati) - 2}")
@@ -172,5 +174,5 @@ if __name__ == "__main__":
         output_dir=args.output,
     )
     print(f"\nReport completati:")
-    print(f"   Excel -> {path_excel}")
-    print(f"   Word  -> {path_word}")
+    print(f"   Excel → {path_excel}")
+    print(f"   Word  → {path_word}")
