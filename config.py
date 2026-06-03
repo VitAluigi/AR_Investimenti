@@ -49,6 +49,7 @@ SCHEMA_CANONICO = {
     "data_acquisto":    "Data acquisto",
     "scadenza":         "Scadenza",
     "peso_ptf":         "Peso % portafoglio",
+    "pl_totale_db":  "P/M Totali LC",
 }
 
 ANALISI_REQUISITI = {
