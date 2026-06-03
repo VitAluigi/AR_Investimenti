@@ -154,6 +154,7 @@ SINONIMI = {
 # ---------------------------------------------------------------------------
 SINONIMI_PREV = {
     # book_value_prev
+    "valore carico LC iniziale": "book_value_prev",
     "book value n-1":            "book_value_prev",
     "valore carico n-1":         "book_value_prev",
     "mtm n-1":                   "book_value_prev",
