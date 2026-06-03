@@ -21,7 +21,6 @@ from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
 from config import INPUT_DIR, OUTPUT_DIR
 
-# Nome foglio transaction report (case-insensitive match)
 TRANSACTION_SHEET_KEYWORDS = ["transaction", "operazioni", "movimenti"]
 
 
@@ -35,7 +34,6 @@ def leggi_portafoglio(path: str) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         xls = pd.ExcelFile(path)
         sheet_names = xls.sheet_names
 
-        # Foglio portafoglio: quello con più colonne tra i non-transaction
         foglio_ptf = sheet_names[0]
         foglio_tx  = None
 
@@ -140,9 +138,10 @@ def calcola_analisi(df: pd.DataFrame,
 
     # Transaction report — indipendente dal mapping portafoglio
     if df_tx is not None and not df_tx.empty:
+        dati["transaction_report"] = df_tx          # grezzo completo → 98_TransactionReport
         df_top_op = top_operazioni(df_tx, n=20)
         if df_top_op is not None and not df_top_op.empty:
-            dati["top_operazioni"] = df_top_op
+            dati["top_operazioni"] = df_top_op      # top 20 → Top20_Operazioni
             print(f"    → Top operazioni: {len(df_top_op)} righe")
 
     dati["dettaglio"] = df
