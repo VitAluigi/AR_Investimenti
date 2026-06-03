@@ -409,26 +409,21 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_numeriche})
 
     # outer join: include titoli acquistati (solo N) e venduti (solo N-1)
+    # Le colonne anagrafiche dei titoli venduti (solo N-1) vengono
+    # portate automaticamente dal merge outer tramite suffisso _prev.
+    # Per usarle nelle analisi, le recuperiamo con combine_first.
     result = df_n.merge(df_prev, on=merge_on, how="outer")
 
-    # Per i titoli venduti (solo in N-1), le colonne anagrafiche di N sono NaN.
-    # Le recuperiamo da N-1 per permettere le analisi per asset_class, paese ecc.
+    # Per i titoli venduti (solo N-1), le colonne anagrafiche di N sono NaN.
+    # Le recuperiamo dai corrispondenti _prev (portati dal merge outer).
     cols_anagrafica = [c for c in ["asset_class", "tipo_emittente", "rating",
-                                    "paese", "valuta", "settore", "descrizione",
-                                    "company_name", "portfolio_name",
-                                    "valuation_area", "valuation_class",
-                                    "bond_classification"]
-                       if c in df_n1.columns and c in result.columns]
-    if cols_anagrafica:
-        df_n1_ana = df_n1[merge_on + cols_anagrafica].copy()
-        for col in cols_anagrafica:
-            # Riempi NaN di N con i valori di N-1 (solo per titoli venduti)
-            if col in result.columns:
-                result[col] = result[col].combine_first(
-                    result[merge_on[0]].map(
-                        df_n1_ana.set_index(merge_on[0])[col]
-                    )
-                )
+                                   "paese", "valuta", "settore", "descrizione",
+                                   "company_name", "portfolio_name",
+                                   "valuation_area", "valuation_class",
+                                   "bond_classification"]
+                       if c in result.columns and f"{c}_prev" in result.columns]
+    for col in cols_anagrafica:
+        result[col] = result[col].combine_first(result[f"{col}_prev"])
 
     return result
 
