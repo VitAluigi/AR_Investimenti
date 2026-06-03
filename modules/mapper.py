@@ -12,12 +12,7 @@ from modules.ai_client import chiedi_ai
 # ---------------------------------------------------------------------------
 # Dizionario sinonimi — CAMPI STANDARD (non N-1)
 # ---------------------------------------------------------------------------
-SINONIMI = {
-    # book_value_prev
-    "valore carico lc iniziale":   "book_value_prev",
-    # fair_value_prev
-    "valore lc Mercato Iniziale":  "fair_value_prev",
-    
+SINONIMI = {    
     # ---- BOOK VALUE (valore contabile N) ----
     "valore carico lc finale":   "book_value",
     "total book value lc":       "book_value",
@@ -156,7 +151,7 @@ SINONIMI_PREV = {
     # book_value_prev
     "valore carico lc iniziale":   "book_value_prev",
     # fair_value_prev
-    "valore lc Mercato Iniziale":  "fair_value_prev",
+    "valore lc mercato iniziale":  "fair_value_prev",
     # cedola_prev
     "cedola/interessi n-1":      "cedola_prev",
     "cedola n-1":                "cedola_prev",
@@ -197,18 +192,20 @@ def _salva_mapping_appreso(mapping: dict):
 def _match_sinonimo(col: str) -> str | None:
     col_lower = col.lower().strip()
 
-    # Se contiene "n-1" → cerca SOLO in SINONIMI_PREV
-    if "n-1" in col_lower:
-        for pattern, canonico in sorted(SINONIMI_PREV.items(), key=lambda x: -len(x[0])):
-            if pattern in col_lower:
-                return canonico
-        return None
+    # 1. Match esatto in SINONIMI_PREV (priorità: pattern più specifici)
+    if col_lower in SINONIMI_PREV:
+        return SINONIMI_PREV[col_lower]
 
-    # Match esatto
+    # 2. Match parziale in SINONIMI_PREV (pattern più lunghi prima)
+    for pattern, canonico in sorted(SINONIMI_PREV.items(), key=lambda x: -len(x[0])):
+        if re.search(r'\b' + re.escape(pattern) + r'\b', col_lower):
+            return canonico
+
+    # 3. Match esatto in SINONIMI
     if col_lower in SINONIMI:
         return SINONIMI[col_lower]
 
-    # Match parziale: pattern più lunghi prima
+    # 4. Match parziale in SINONIMI (pattern più lunghi prima)
     for pattern, canonico in sorted(SINONIMI.items(), key=lambda x: -len(x[0])):
         if re.search(r'\b' + re.escape(pattern) + r'\b', col_lower):
             return canonico
