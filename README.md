@@ -31,7 +31,7 @@ portafoglio_ai/
 pip install -r requirements.txt
 ```
 
-### 2. Configura Azure OpenAI ======== CHIEDERE ACCESSO
+### 2. Configura Azure OpenAI quando disponibile
 Apri `config.py` e compila:
 ```python
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
@@ -51,7 +51,7 @@ AZURE_DEPLOYMENT_NAME = "gpt-4o"
 ```bash
 streamlit run app.py
 ```
-Apri il browser su http://localhost:8501
+Apri il browser su http://localhost:8501 se in locale
 
 ### Da riga di comando
 ```bash
