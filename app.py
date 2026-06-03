@@ -56,7 +56,7 @@ uploaded_file = st.file_uploader(
 )
 
 if not uploaded_file:
-    st.info("⬆Carica un file Excel per iniziare.")
+    st.info("Carica un file Excel per iniziare.")
     st.stop()
 
 # ---------------------------------------------------------------------------
