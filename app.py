@@ -149,10 +149,19 @@ disponibili = scopri_analisi(df_mapped)
 cols = st.columns(3)
 for i, (nome, attiva) in enumerate(disponibili.items()):
     with cols[i % 3]:
-        stato  = "OK" if attiva else "KO"
-        colore = "ok" if attiva else "no"
+        colore_bg  = "#ffffff" if attiva else "#ffeaea"
+        colore_txt = "rgb(0,51,141)" if attiva else "#dc3545"
+        icona      = "OK" if attiva else "KO"
         st.markdown(
-            f'<span class="{colore}">{stato} {nome.replace("_", " ").title()}</span>',
+            f"""<div style="
+                background-color:{colore_bg};
+                color:{colore_txt};
+                padding:8px 12px;
+                margin-bottom:6px;
+                border-radius:6px;
+                font-size:13px;
+                font-weight:600;
+            ">{icona} {nome.replace("_", " ").title()}</div>""",
             unsafe_allow_html=True
         )
 
