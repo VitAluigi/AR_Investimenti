@@ -7,29 +7,28 @@
 #   "none"    → solo dizionario sinonimi, nessuna AI
 # =============================================================================
 
-AI_PROVIDER = "claude"   # ← cambia in "azure" quando sei in azienda
+import os
 
-# --- Anthropic Claude (PC personale) ---
-CLAUDE_API_KEY   = "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"
+AI_PROVIDER = "claude"   # <- cambia in "azure" se disponibile
+
+# --- Anthropic Claude (pc) ---
+CLAUDE_API_KEY   = os.environ.get("CLAUDE_API_KEY", "")
 CLAUDE_MODEL     = "claude-opus-4-6"
 
-# --- Azure OpenAI (azienda) ---
+# --- Azure OpenAI (quando disponibile) ---
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
 AZURE_OPENAI_API_KEY  = "INSERISCI-API-KEY-AZURE"
 AZURE_OPENAI_VERSION  = "2024-02-01"
 AZURE_DEPLOYMENT_NAME = "gpt-4o"
 
-# --- Percorsi ---
 INPUT_DIR    = "input"
 OUTPUT_DIR   = "output"
 MAPPING_FILE = "modules/learned_mappings.json"
 
-# --- Report ---
 REPORT_LINGUA         = "italiano"
 REPORT_VALUTA_SIMBOLO = "€"
 REPORT_VALUTA_FORMATO = '#.##0,00 "€"'
 
-# --- Schema canonico ---
 SCHEMA_CANONICO = {
     "isin":             "Codice ISIN",
     "descrizione":      "Descrizione titolo",
@@ -52,7 +51,6 @@ SCHEMA_CANONICO = {
     "peso_ptf":         "Peso % portafoglio",
 }
 
-# --- Analisi disponibili: nome → colonne richieste ---
 ANALISI_REQUISITI = {
     "patrimoniale_asset_class":      ["fair_value", "asset_class"],
     "patrimoniale_fv_level":         ["fair_value", "asset_class", "fair_value_level"],
@@ -69,7 +67,6 @@ ANALISI_REQUISITI = {
     "scadenze":                      ["fair_value", "scadenza"],
 }
 
-# --- Stile Excel ---
 COLORI = {
     "header_bg": "1F3864",
     "header_fg": "FFFFFF",
