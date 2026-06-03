@@ -6,21 +6,21 @@ import streamlit as st
 import pandas as pd
 import os
 import tempfile
-from pathlib import Path
 
 from modules.mapper  import mappa_colonne, applica_mapping, report_mapping
-from modules.analisi import scopri_analisi, kpi_portafoglio
-from main            import leggi_portafoglio, calcola_analisi, genera_output
+from modules.analisi import (scopri_analisi, kpi_portafoglio,
+                              unisci_ship_patrimoniale, unisci_ship_economico)
+from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco
 
-st.set_page_config(
-    page_title="Report Portafoglio Titoli",
-    layout="wide"
-)
+st.set_page_config(page_title="Report Portafoglio Titoli", layout="wide")
 
 st.markdown("""
 <style>
-.ok  { color: #28a745; font-weight:bold; }
-.no  { color: #dc3545; }
+.stApp { background-color: rgb(0, 51, 141); }
+.stApp, .stApp p, .stApp label, .stApp h1, .stApp h2, .stApp h3 { color: white; }
+[data-testid="stSidebar"] { background-color: rgb(0, 40, 110); }
+.stButton > button { background-color: white; color: rgb(0, 51, 141); font-weight: bold; }
+[data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: white; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -39,13 +39,12 @@ with st.sidebar:
         "Unità di misura",
         options=["€", "€ migliaia", "€ milioni"],
         index=0,
-        help="Tutti i valori monetari verranno divisi di conseguenza in Excel e Word."
     )
     divisori = {"€": 1, "€ migliaia": 1_000, "€ milioni": 1_000_000}
     divisore = divisori[unita]
 
     st.divider()
-    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate dal tuo file.")
+    st.caption("Il sistema riconosce automaticamente le colonne e genera solo le analisi supportate.")
 
 # ---------------------------------------------------------------------------
 # UPLOAD FILE
@@ -60,18 +59,41 @@ if not uploaded_file:
     st.stop()
 
 # ---------------------------------------------------------------------------
-# LETTURA E MAPPING
+# LETTURA
 # ---------------------------------------------------------------------------
-with st.spinner("Analisi del file in corso..."):
+with st.spinner("Lettura file in corso..."):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         tmp.write(uploaded_file.read())
         tmp_path = tmp.name
 
-    df_raw, df_tx = leggi_portafoglio(tmp_path)
-    mapping   = mappa_colonne(df_raw.columns.tolist())
-    info      = report_mapping(mapping)
-    df_mapped = applica_mapping(df_raw, mapping)
-    df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
+    tipo, df_ptf_n, df_ptf_n1, dfs_eco, df_tx = leggi_portafoglio(tmp_path)
+
+# ---------------------------------------------------------------------------
+# MAPPING E UNIONE N/N-1
+# ---------------------------------------------------------------------------
+with st.spinner("Mapping colonne..."):
+    def _esegui_mapping(df):
+        mapping  = mappa_colonne(df.columns.tolist())
+        info     = report_mapping(mapping)
+        df_m     = applica_mapping(df, mapping)
+        return df_m.loc[:, ~df_m.columns.duplicated()], mapping, info
+
+    if tipo == "ship":
+        df_n,  mapping_n,  info_n  = _esegui_mapping(df_ptf_n)
+        df_n1, mapping_n1, info_n1 = _esegui_mapping(df_ptf_n1)
+        df_mapped = unisci_ship_patrimoniale(df_n, df_n1)
+        mapping, info = mapping_n, info_n
+
+        df_inc_n, df_inc_n1 = dfs_eco
+        df_eco_n,  _, _ = _esegui_mapping(df_inc_n)
+        df_eco_n1, _, _ = _esegui_mapping(df_inc_n1)
+        df_eco    = unisci_ship_economico(df_eco_n, df_eco_n1)
+        df_mapped = _merge_ptf_eco(df_mapped, df_eco)
+
+        st.info("📊 DB SHIP rilevato (5 sheet: Inventory N+N-1, Income N+N-1, Transaction Report)")
+    else:
+        df_mapped, mapping, info = _esegui_mapping(df_ptf_n)
+        st.info("📊 DB SOFIA rilevato (2 sheet: Posizioni + Transaction Report)")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 1: MAPPING
@@ -94,24 +116,32 @@ with st.expander("Dettaglio mapping colonne"):
     ]
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
 
-with st.expander("✏️ Correggi mapping manuale (opzionale)"):
-    from config import SCHEMA_CANONICO
-    non_mappate = info["non_mappate"]
-    if non_mappate:
-        correzioni = {}
-        for col in non_mappate:
-            scelta = st.selectbox(
-                f"'{col}' →",
-                options=["(ignora)"] + list(SCHEMA_CANONICO.keys()),
-                key=f"corr_{col}"
-            )
-            if scelta != "(ignora)":
-                correzioni[col] = scelta
-        if correzioni and st.button("Applica correzioni"):
-            df_mapped = df_mapped.rename(columns=correzioni)
-            st.success(f"Applicate {len(correzioni)} correzioni.")
-    else:
-        st.info("Nessuna colonna da correggere.")
+# ---------------------------------------------------------------------------
+# FILTRI (sidebar aggiuntivi, visibili solo se le colonne esistono)
+# ---------------------------------------------------------------------------
+filtri = {}
+
+with st.sidebar:
+    st.divider()
+    st.header("Filtri analisi")
+
+    if "valuation_area" in df_mapped.columns:
+        opzioni_va = sorted(df_mapped["valuation_area"].dropna().unique().tolist())
+        sel_va = st.multiselect("Valuation Area", options=opzioni_va, default=opzioni_va)
+        if sel_va and set(sel_va) != set(opzioni_va):
+            filtri["valuation_area"] = sel_va
+
+    if "company_name" in df_mapped.columns:
+        opzioni_co = sorted(df_mapped["company_name"].dropna().unique().tolist())
+        sel_co = st.multiselect("Società", options=opzioni_co, default=opzioni_co)
+        if sel_co and set(sel_co) != set(opzioni_co):
+            filtri["company_name"] = sel_co
+
+    if "portfolio_name" in df_mapped.columns:
+        opzioni_pf = sorted(df_mapped["portfolio_name"].dropna().unique().tolist())
+        sel_pf = st.multiselect("Portafoglio", options=opzioni_pf, default=opzioni_pf)
+        if sel_pf and set(sel_pf) != set(opzioni_pf):
+            filtri["portfolio_name"] = sel_pf
 
 # ---------------------------------------------------------------------------
 # SEZIONE 2: ANALISI DISPONIBILI
@@ -122,19 +152,24 @@ disponibili = scopri_analisi(df_mapped)
 cols = st.columns(3)
 for i, (nome, attiva) in enumerate(disponibili.items()):
     with cols[i % 3]:
-        stato  = "OK" if attiva else "KO"
-        colore = "ok" if attiva else "no"
+        colore_bg  = "#ffffff" if attiva else "#ffeaea"
+        colore_txt = "rgb(0,51,141)" if attiva else "#dc3545"
+        icona      = "OK" if attiva else "KO"
         st.markdown(
-            f'<span class="{colore}">{stato} {nome.replace("_", " ").title()}</span>',
+            f"""<div style="background-color:{colore_bg};color:{colore_txt};
+            padding:8px 12px;margin-bottom:6px;border-radius:6px;
+            font-size:13px;font-weight:600;">
+            {icona} {nome.replace("_", " ").title()}</div>""",
             unsafe_allow_html=True
         )
 
 n_attive = sum(1 for v in disponibili.values() if v)
 st.caption(f"**{n_attive}/{len(disponibili)}** analisi disponibili con i dati forniti.")
+
 if df_tx is not None and not df_tx.empty:
-    st.success("Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
+    st.success("✅ Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
 else:
-    st.info("Nessun Transaction Report nel file — sheet Top 20 Operazioni non disponibile.")
+    st.info("ℹ️ Nessun Transaction Report — sheet Top 20 Operazioni non disponibile.")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 3: KPI
@@ -143,9 +178,7 @@ kpi = kpi_portafoglio(df_mapped)
 st.subheader("KPI Portafoglio")
 
 def fmt_val(v):
-    if v is None:
-        return "n.d."
-    return f"{v / divisore:,.2f} {unita}"
+    return "n.d." if v is None else f"{v / divisore:,.2f} {unita}"
 
 def fmt_perc(v):
     return f"{v:.2f}%" if v is not None else "n.d."
@@ -160,7 +193,7 @@ c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 # ---------------------------------------------------------------------------
 # SEZIONE 4: ANTEPRIMA
 # ---------------------------------------------------------------------------
-with st.expander("Anteprima dati (prime 20 righe)"):
+with st.expander("Anteprima dati"):
     st.dataframe(df_mapped.head(20), use_container_width=True)
 
 # ---------------------------------------------------------------------------
@@ -171,7 +204,7 @@ st.subheader("Genera Report")
 
 if st.button("Genera Excel + Word", type="primary", use_container_width=True):
     with st.spinner("Generazione report in corso..."):
-        dati = calcola_analisi(df_mapped, df_tx)
+        dati = calcola_analisi(df_mapped, df_tx, filtri)
         output_dir = tempfile.mkdtemp()
         path_excel, path_word = genera_output(
             dati, nome_portafoglio, output_dir, unita=unita
