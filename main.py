@@ -1,13 +1,6 @@
 # =============================================================================
 # main.py — Orchestratore principale
 # =============================================================================
-# USO DA RIGA DI COMANDO:
-#   python main.py --input input/portafoglio.xlsx --nome "Fondo Alpha"
-#
-# USO DA CODICE:
-#   from main import genera_report
-#   genera_report("input/portafoglio.xlsx", nome_portafoglio="Fondo Alpha")
-# =============================================================================
 
 import argparse
 import os
@@ -17,12 +10,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from modules.mapper   import mappa_colonne, applica_mapping, report_mapping
-from modules.analisi  import (scopri_analisi, report_analisi, kpi_portafoglio,
-                               patrimoniale_asset_class, patrimoniale_fv_level,
-                               rating_per_emittente, geografia_governativi,
-                               economica_completa, top_holdings,
-                               esposizione_valutaria, esposizione_settoriale)
+from modules.mapper  import mappa_colonne, applica_mapping, report_mapping
+from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
+                              patrimoniale_asset_class, patrimoniale_fv_level,
+                              rating_per_emittente, geografia_governativi,
+                              economica_completa, top_holdings,
+                              esposizione_valutaria, esposizione_settoriale,
+                              confronto_bv_fv)
 from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
 from config import INPUT_DIR, OUTPUT_DIR
@@ -33,29 +27,21 @@ from config import INPUT_DIR, OUTPUT_DIR
 # ---------------------------------------------------------------------------
 
 def leggi_portafoglio(path: str) -> pd.DataFrame:
-    """
-    Legge il file Excel grezzo.
-    Gestisce: header su righe diverse, fogli multipli, valori misti.
-    """
     print(f"[1/5] Lettura file: {path}")
     try:
-        # Prima: cerca il foglio che sembra il database principale
         xls = pd.ExcelFile(path)
-        foglio_scelto = xls.sheet_names[0]  # default: primo foglio
+        foglio_scelto = xls.sheet_names[0]
 
-        # Se ci sono più fogli, prende quello con più righe
         if len(xls.sheet_names) > 1:
-            max_rows = 0
+            max_cols = 0
             for sheet in xls.sheet_names:
                 df_temp = pd.read_excel(path, sheet_name=sheet, nrows=5)
-                if len(df_temp.columns) > max_rows:
-                    max_rows = len(df_temp.columns)
+                if len(df_temp.columns) > max_cols:
+                    max_cols = len(df_temp.columns)
                     foglio_scelto = sheet
             print(f"    → Foglio selezionato: '{foglio_scelto}' (tra {xls.sheet_names})")
 
         df = pd.read_excel(path, sheet_name=foglio_scelto)
-
-        # Pulizia base
         df = df.dropna(how="all")
         df = df.dropna(axis=1, how="all")
         df.columns = df.columns.astype(str).str.strip()
@@ -75,13 +61,14 @@ def leggi_portafoglio(path: str) -> pd.DataFrame:
 def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
     print(f"[2/5] Mapping colonne...")
     mapping = mappa_colonne(df.columns.tolist())
-    info = report_mapping(mapping)
+    info    = report_mapping(mapping)
 
-    print(f"    -> Colonne riconosciute: {info['riconosciute']}/{info['totale']}")
+    print(f"    → Colonne riconosciute: {info['riconosciute']}/{info['totale']}")
     if info["non_mappate"]:
-        print(f"    -> Non mappate: {info['non_mappate']}")
+        print(f"    → Non mappate: {info['non_mappate']}")
 
     df_mapped = applica_mapping(df, mapping)
+    df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
     return df_mapped
 
 
@@ -95,8 +82,6 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
     print(report_analisi(disponibili))
 
     dati = {}
-
-    # KPI
     dati["kpi"] = kpi_portafoglio(df)
 
     if disponibili.get("patrimoniale_asset_class"):
@@ -126,10 +111,14 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
     if disponibili.get("esposizione_settoriale"):
         dati["esposizione_settoriale"] = esposizione_settoriale(df)
 
-    # Sempre: tabella dettaglio completa
+    # Confronto Book Value vs Fair Value di mercato (se disponibile)
+    if "fair_value_mercato" in df.columns and "asset_class" in df.columns:
+        dati["confronto_bv_fv"] = confronto_bv_fv(df)
+
+    # Sempre: dettaglio completo
     dati["dettaglio"] = df
 
-    print(f"    → Analisi calcolate: {len(dati) - 2}")  # escludi kpi e dettaglio
+    print(f"    → Analisi calcolate: {len(dati) - 2}")
     return dati
 
 
@@ -137,9 +126,10 @@ def calcola_analisi(df: pd.DataFrame) -> dict:
 # STEP 4 & 5: Genera Excel e Word
 # ---------------------------------------------------------------------------
 
-def genera_output(dati: dict, nome_portafoglio: str, output_dir: str, unita: str = "€") -> tuple[str, str]:
+def genera_output(dati: dict, nome_portafoglio: str,
+                  output_dir: str, unita: str = "€") -> tuple[str, str]:
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    data_str = datetime.today().strftime("%Y%m%d")
+    data_str  = datetime.today().strftime("%Y%m%d")
     nome_safe = nome_portafoglio.replace(" ", "_").replace("/", "-")
 
     print(f"[4/5] Generazione Excel...")
@@ -148,7 +138,8 @@ def genera_output(dati: dict, nome_portafoglio: str, output_dir: str, unita: str
     salva_excel(wb, path_excel)
 
     print(f"[5/5] Generazione Word...")
-    doc = genera_word(dati, kpi=dati["kpi"], nome_portafoglio=nome_portafoglio, unita=unita)
+    doc = genera_word(dati, kpi=dati["kpi"],
+                      nome_portafoglio=nome_portafoglio, unita=unita)
     path_word = os.path.join(output_dir, f"{nome_safe}_{data_str}.docx")
     salva_word(doc, path_word)
 
@@ -170,9 +161,9 @@ def genera_report(path_input: str,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genera report portafoglio titoli")
-    parser.add_argument("--input", required=True,  help="Percorso file Excel input")
-    parser.add_argument("--nome",  default="Portafoglio", help="Nome del portafoglio")
-    parser.add_argument("--output", default=OUTPUT_DIR,   help="Cartella output")
+    parser.add_argument("--input",  required=True,         help="Percorso file Excel input")
+    parser.add_argument("--nome",   default="Portafoglio", help="Nome del portafoglio")
+    parser.add_argument("--output", default=OUTPUT_DIR,    help="Cartella output")
     args = parser.parse_args()
 
     path_excel, path_word = genera_report(
