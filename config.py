@@ -2,9 +2,9 @@
 # config.py — Impostazioni centrali del sistema
 # =============================================================================
 # MODALITÀ AI:
-#   "claude"  → usa Anthropic Claude API (PC personale, test)
-#   "azure"   → usa Azure OpenAI (ambiente aziendale)
-#   "none"    → solo dizionario sinonimi, nessuna AI
+#   "claude"  -> usa Anthropic Claude API (PC personale, test)
+#   "azure"   -> usa Azure OpenAI (ambiente aziendale)
+#   "none"    -> solo dizionario sinonimi, nessuna AI
 # =============================================================================
 
 import os
@@ -66,6 +66,7 @@ ANALISI_REQUISITI = {
     "esposizione_valutaria":         ["fair_value", "valuta"],
     "esposizione_settoriale":        ["fair_value", "settore"],
     "scadenze":                      ["fair_value", "scadenza"],
+    "confronto_bv_fv":               ["fair_value", "fair_value_mercato", "asset_class"],
 }
 
 COLORI = {
