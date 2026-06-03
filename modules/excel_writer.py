@@ -47,7 +47,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
                             divisore: float):
     """
     Layout:
-      B2 = "KPMG"
+      B2 = "kpmg"
       B3 = nome analisi
       Riga 5: titolo blu (merge su colonne tabella), testo bianco, altezza 19.5
               contenuto: nome_analisi + \n + unita_label
@@ -60,12 +60,12 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
     end_col    = start_col + n_cols - 1
 
     # B2 KPMG
-    ws.cell(row=2, column=2, value="KPMG").font = Font(
-        name="KPMG Logo", size=FS_Titoli, bold=True, color=NERO)
+    ws.cell(row=2, column=2, value="kpmg").font = Font(
+        name="KPMG Logo", size=FS_Titoli, bold=True, color=KPMG_BLU)
 
     # B3 nome analisi
     ws.cell(row=3, column=2, value=nome_analisi).font = Font(
-        name="KPMG Bold", size=FS_Titoli, color=NERO)
+        name="KPMG Bold", size=FS_Titoli, color=KPMG_BLU)
 
     # Riga 5: titolo blu — merge esatto sulle colonne della tabella
     if end_col > start_col:
@@ -178,11 +178,11 @@ def genera_excel(dati: dict,
         kpi = dati["kpi"]
         num_fmt = _num_fmt(divisore)
         rows_kpi = [
-            ("NAV Totale",   kpi.get("nav"),         kpi.get("nav_prev"), kpi.get("var_nav")),
-            ("N° Titoli",    kpi.get("n_titoli"),     None,                None),
-            ("P&L Totale",   kpi.get("pl_totale"),    None,                None),
-            ("Proventi",     kpi.get("proventi"),     None,                None),
-            ("Rendimento %", kpi.get("rendimento_%"), None,                None),
+            ("NAV Totale", kpi.get("nav"), kpi.get("nav_prev"), kpi.get("var_nav")),
+            ("N° Titoli", kpi.get("n_titoli"), None, None),
+            ("P&L Totale", kpi.get("pl_totale"), None, None),
+            ("Proventi", kpi.get("proventi"), None, None),
+            ("Rendimento %", kpi.get("rendimento_%"), None, None),
         ]
         for i, (label, n, n1, var) in enumerate(rows_kpi, 7):
             ws_r.row_dimensions[i].height = 12
@@ -196,8 +196,8 @@ def genera_excel(dati: dict,
                     else:
                         display = _div(val, divisore)
                 cell = ws_r.cell(row=i, column=col_idx, value=display)
-                cell.font      = Font(name=ARIAL, size=FS)
-                cell.border    = _border()
+                cell.font = Font(name=ARIAL, size=FS)
+                cell.border = _border()
                 cell.alignment = Alignment(horizontal="right")
                 if label == "N° Titoli":
                     cell.number_format = '0'
@@ -214,14 +214,14 @@ def genera_excel(dati: dict,
     # ------------------------------------------------------------------ #
     config_fogli = [
         ("patrimoniale_asset_class", "AssetClass", "Composizione per Asset Class"),
-        ("patrimoniale_fv_level",    "FVLevel",    "Asset Class per Fair Value Level"),
-        ("rating_governativi",       "Rating_Gov",      "Rating – Titoli Governativi"),
-        ("rating_non_governativi",   "Rating_NonGov",   "Rating – Titoli Non Governativi"),
-        ("geografia_governativi",    "Geografia_Gov",   "Distribuzione Geografica Governativi"),
-        ("economica_completa",       "Economica",       "Analisi Economica per Asset Class"),
-        ("top_holdings",             "Top10_Holdings",  "Top 10 Holdings per Fair Value"),
-        ("esposizione_valutaria",    "Valute",          "Esposizione Valutaria"),
-        ("esposizione_settoriale",   "Settori",         "Esposizione Settoriale"),
+        ("patrimoniale_fv_level", "FVLevel", "Asset Class per Fair Value Level"),
+        ("rating_governativi", "Rating_Gov", "Rating – Titoli Governativi"),
+        ("rating_non_governativi", "Rating_NonGov", "Rating – Titoli Non Governativi"),
+        ("geografia_governativi", "Geografia_Gov", "Distribuzione Geografica Governativi"),
+        ("economica_completa", "Economica", "Analisi Economica per Asset Class"),
+        ("top_holdings", "Top10_Holdings", "Top 10 Holdings per Fair Value"),
+        ("esposizione_valutaria", "Valute", "Esposizione Valutaria"),
+        ("esposizione_settoriale", "Settori", "Esposizione Settoriale"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
@@ -235,7 +235,6 @@ def genera_excel(dati: dict,
                                 nome_analisi=nome_analisi,
                                 unita_label=unita_label,
                                 divisore=divisore)
-
 
     # ------------------------------------------------------------------ #
     # 99 DETTAGLIO COMPLETO (invariato)                                    #
