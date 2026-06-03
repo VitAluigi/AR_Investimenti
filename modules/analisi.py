@@ -269,7 +269,7 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
         "n_titoli":     n_titoli,
         "pl_totale":    pl_tot,
         "proventi":     proventi,
-        "rendimento_%": round(pl_tot / nav * 100, 2) if nav > 0 else None,
+        "rendimento_%": round((proventi + pl_realizzo) / nav * 100, 2) if nav > 0 else None,
         "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
         "var_nav_%":    _var_pct(nav, nav_prev),
     }
