@@ -12,7 +12,7 @@ from modules.analisi import (scopri_analisi, kpi_portafoglio,
                               unisci_ship_patrimoniale, unisci_ship_economico)
 from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco
 
-st.set_page_config(page_title="SPINGERE CAVALLO", layout="wide")
+st.set_page_config(page_title="Report AR Investimenti", layout="wide")
 
 st.markdown("""
 <style>
@@ -24,7 +24,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Report Portafoglio Titoli")
+st.title("SPINGERE CAVALLO")
 st.caption("Carica il file Excel grezzo e genera automaticamente il report completo.")
 
 # ---------------------------------------------------------------------------
