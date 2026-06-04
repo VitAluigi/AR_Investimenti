@@ -65,6 +65,7 @@ SCHEMA_CANONICO = {
     "pl_totale_db_prev": "PL Totale N-1",
     # Duration
     "modified_duration": "Modified Duration",
+    "convexity":         "Convexity",
     "mac_duration":      "Mac Duration",
     # Date
     "data_acquisto":     "Data acquisto",
@@ -90,6 +91,7 @@ ANALISI_REQUISITI = {
     "confronto_bv_fv":               ["book_value", "fair_value", "asset_class"],
     "scadenze_bucket":               ["book_value", "scadenza"],
     "duration_ponderata":            ["book_value", "modified_duration", "asset_class"],
+    "sensitivity_tassi":             ["book_value", "modified_duration", "asset_class"],
 }
 
 # --- Stile Excel ---
