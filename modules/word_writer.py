@@ -238,7 +238,7 @@ def genera_word(dati: dict, kpi: dict,
                 "La seguente tabella riporta la variazione stimata del valore di portafoglio "
                 "per shift paralleli della curva dei tassi di interesse, calcolata con "
                 "approssimazione di Taylor al secondo ordine: "
-                "ΔP ≈ BV × (−D_mod × Δy + ½ × C × Δy²)."
+                "ΔP ≈ BV × (−D_mod × Δy + 1/2 × C × Δy^2)."
             )
             _aggiungi_tabella(doc, dati["sensitivity_tassi"])
             commento = _commento_ai(
