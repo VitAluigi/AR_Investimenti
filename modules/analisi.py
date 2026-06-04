@@ -534,6 +534,7 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
+    # ── N ──────────────────────────────────────────────────────────────────
     nav         = _sum(df, "book_value")
     nav_prev    = _sum(df, "book_value_prev")
     n_titoli    = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
@@ -546,41 +547,36 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
     proventi    = _sum(df, "cedola") + _sum(df, "dividendi")
     pl_realizzo = _sum(df, "pl_realizzo")
 
+    # ── N-1 ────────────────────────────────────────────────────────────────
+    if "book_value_prev" in df.columns and "isin" in df.columns:
+        n_titoli_prev = int(df[df["book_value_prev"].notna()]["isin"].nunique())
+    else:
+        n_titoli_prev = None
+
+    if "pl_totale_db_prev" in df.columns:
+        pl_tot_prev = _sum(df, "pl_totale_db_prev") or None
+    else:
+        v = _sum(df, "pl_realizzo_prev") + _sum(df, "pl_valutazione_prev")
+        pl_tot_prev = v if v != 0 else None
+
+    proventi_prev = _sum(df, "cedola_prev") + _sum(df, "dividendi_prev")
+    pl_rea_prev   = _sum(df, "pl_realizzo_prev")
+    rend_prev     = round((proventi_prev + pl_rea_prev) / nav_prev * 100, 2)                     if nav_prev and nav_prev > 0 else None
+
     return {
-        "nav":          nav,
-        "nav_prev":     nav_prev,
-        "n_titoli":     n_titoli,
-        "pl_totale":    pl_tot,
-        "proventi":     proventi,
-        "rendimento_%": round((proventi + pl_realizzo) / nav * 100, 2) if nav > 0 else None,
-        "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
-        "var_nav_%":    _var_pct(nav, nav_prev),
+        "nav":               nav,
+        "nav_prev":          nav_prev,
+        "n_titoli":          n_titoli,
+        "n_titoli_prev":     n_titoli_prev,
+        "pl_totale":         pl_tot,
+        "pl_totale_prev":    pl_tot_prev,
+        "proventi":          proventi,
+        "proventi_prev":     proventi_prev if proventi_prev else None,
+        "rendimento_%":      round((proventi + pl_realizzo) / nav * 100, 2) if nav > 0 else None,
+        "rendimento_%_prev": rend_prev,
+        "var_nav":           round(nav - nav_prev, 2) if nav_prev else None,
+        "var_nav_%":         _var_pct(nav, nav_prev),
     }
-
-
-# ---------------------------------------------------------------------------
-# 6. TOP OPERAZIONI — TRANSACTION REPORT
-# ---------------------------------------------------------------------------
-
-_TX_COL_MAP = {
-    "position value date":                "data",
-    "business transaction category name": "tipo",
-    "isin code":                          "isin",
-    "security id name":                   "descrizione",
-    "product category name":              "asset_class",
-    "nominal/units":                      "nominale",
-    "transaction amount lc":              "importo_lc",
-    "transaction amount pc":              "importo_pc",
-    "realised gain loss security lc":     "pl_titolo_lc",
-    "realised gain loss security pc":     "pl_titolo_pc",
-    "realised gain loss fx lc":           "pl_cambio_lc",
-    "realised gain loss lc":              "pl_totale_lc",
-    "issue currency":                     "valuta",
-    "counterparty name":                  "controparte",
-    "operation price pc":                 "prezzo",
-}
-
-_TX_TIPI_RILEVANTI = {"sale", "purchase"}
 
 
 def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
