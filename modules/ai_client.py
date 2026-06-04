@@ -21,8 +21,16 @@ def chiedi_ai(prompt: str, max_tokens: int = 500) -> str:
 def _chiedi_claude(prompt: str, max_tokens: int) -> str:
     try:
         import anthropic
-        from config import CLAUDE_API_KEY, CLAUDE_MODEL
-        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        from config import CLAUDE_MODEL
+        # Prova prima st.secrets (Streamlit Cloud), poi os.environ (locale)
+        try:
+            import streamlit as st
+            api_key = st.secrets["CLAUDE_API_KEY"]
+        except Exception:
+            from config import CLAUDE_API_KEY
+            api_key = CLAUDE_API_KEY
+
+        client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=max_tokens,
@@ -32,7 +40,6 @@ def _chiedi_claude(prompt: str, max_tokens: int) -> str:
     except Exception as e:
         print(f"[AVVISO] Claude API non disponibile: {e}")
         return ""
-
 
 def _chiedi_azure(prompt: str, max_tokens: int) -> str:
     try:
