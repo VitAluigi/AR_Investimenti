@@ -12,7 +12,7 @@ from modules.analisi import (scopri_analisi, kpi_portafoglio,
                               unisci_ship_patrimoniale, unisci_ship_economico)
 from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco
 
-st.set_page_config(page_title="Report Portafoglio Titoli", layout="wide")
+st.set_page_config(page_title="SPINGERE CAVALLO", layout="wide")
 
 st.markdown("""
 <style>
