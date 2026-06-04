@@ -43,9 +43,30 @@ def _sum(df, col):
     return 0.0
 
 def _var_pct(n, n1):
-    if n1 and n1 != 0:
-        return round((n - n1) / abs(n1) * 100, 2)
-    return None
+    """
+    Calcola variazione % con gestione casi speciali:
+    - N esiste, N-1 assente/zero  → "+100%"
+    - N-1 esiste, N assente/zero  → "-100%"
+    - Variazione > +100%          → ">100%"
+    - Variazione < -100%          → "<-100%"
+    """
+    import math
+    n_ok  = n  is not None and not (isinstance(n,  float) and math.isnan(n))  and n  != 0
+    n1_ok = n1 is not None and not (isinstance(n1, float) and math.isnan(n1)) and n1 != 0
+
+    if n_ok and not n1_ok:
+        return "+100%"
+    if n1_ok and not n_ok:
+        return "-100%"
+    if not n_ok and not n1_ok:
+        return None
+
+    var = round((n - n1) / abs(n1) * 100, 2)
+    if var > 100:
+        return ">100%"
+    if var < -100:
+        return "<-100%"
+    return var
 
 def _build_confronto(df_base: pd.DataFrame,
                      col_label: str,
@@ -600,31 +621,31 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     if not merge_on:
         return df_n
 
-    # Colonne numeriche di N-1 da portare come _prev
+    # Colonne numeriche di N-1 → rinominate _prev
     cols_numeriche = [c for c in df_n1.columns
                       if pd.api.types.is_numeric_dtype(df_n1[c])
                       and c in df_n.columns
                       and c not in merge_on]
 
-    df_prev = df_n1[merge_on + cols_numeriche].copy()
-    df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_numeriche})
+    # Colonne anagrafiche (stringa) di N-1 → incluse in _prev per recupero titoli venduti
+    COLS_ANA = ["asset_class", "tipo_emittente", "rating", "paese", "valuta",
+                "settore", "descrizione", "valuation_class", "bond_classification",
+                "company_name", "portfolio_name", "scadenza", "data_acquisto"]
+    cols_anagrafica = [c for c in COLS_ANA
+                       if c in df_n1.columns and c not in merge_on]
 
-    # outer join: include titoli acquistati (solo N) e venduti (solo N-1)
-    # Le colonne anagrafiche dei titoli venduti (solo N-1) vengono
-    # portate automaticamente dal merge outer tramite suffisso _prev.
-    # Per usarle nelle analisi, le recuperiamo con combine_first.
+    cols_da_prev = cols_numeriche + cols_anagrafica
+    df_prev = df_n1[merge_on + cols_da_prev].copy()
+    df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_da_prev})
+
+    # outer join: titoli in entrambi, solo N (acquistati), solo N-1 (venduti)
     result = df_n.merge(df_prev, on=merge_on, how="outer")
 
-    # Per i titoli venduti (solo N-1), le colonne anagrafiche di N sono NaN.
-    # Le recuperiamo dai corrispondenti _prev (portati dal merge outer).
-    cols_anagrafica = [c for c in ["asset_class", "tipo_emittente", "rating",
-                                   "paese", "valuta", "settore", "descrizione",
-                                   "company_name", "portfolio_name",
-                                   "valuation_area", "valuation_class",
-                                   "bond_classification"]
-                       if c in result.columns and f"{c}_prev" in result.columns]
+    # Per i titoli venduti (solo N-1): recupera colonne anagrafiche da _prev
     for col in cols_anagrafica:
-        result[col] = result[col].combine_first(result[f"{col}_prev"])
+        if col in result.columns and f"{col}_prev" in result.columns:
+            result[col] = result[col].combine_first(result[f"{col}_prev"])
+            result.drop(columns=[f"{col}_prev"], inplace=True, errors="ignore")
 
     return result
 
