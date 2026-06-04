@@ -20,7 +20,7 @@ def _fill(hex_color):
 
 def _border():
     s = Side(style="thin", color=KPMG_BLU)
-    return Border(left=s, right=s, top=s, bottom=m)
+    return Border(left=s, right=s, top=s, bottom=s)
 
 def _border_analisi(c_idx, start_col, end_col, is_last_row=False):
     s_blu  = Side(style="thin", color=KPMG_BLU)
