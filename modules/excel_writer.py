@@ -137,6 +137,38 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 # GENERAZIONE WORKBOOK
 # ---------------------------------------------------------------------------
 
+
+def _scrivi_foglio_raw(ws, df: pd.DataFrame, titolo: str):
+    """Scrive un foglio raw con header blu e dati senza divisori."""
+    ws.sheet_view.showGridLines = False
+    n_cols = len(df.columns)
+
+    # Header
+    for c_idx, col_name in enumerate(df.columns, 1):
+        cell = ws.cell(row=1, column=c_idx, value=str(col_name))
+        cell.font      = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
+        cell.fill      = _fill(KPMG_BLU)
+        cell.alignment = Alignment(horizontal="center", wrap_text=True)
+        cell.border    = _border_header(c_idx, 1, n_cols)
+        ws.column_dimensions[get_column_letter(c_idx)].width = 16
+    ws.row_dimensions[1].height = 14
+    ws.auto_filter.ref = f"A1:{get_column_letter(n_cols)}1"
+    ws.freeze_panes    = "A2"
+
+    # Dati
+    for r_idx, row in enumerate(df.itertuples(index=False), 2):
+        is_last = (r_idx == 1 + len(df))
+        ws.row_dimensions[r_idx].height = 12
+        for c_idx, val in enumerate(row, 1):
+            # Converti NaT/NaN in None
+            import math
+            if val is pd.NaT or (isinstance(val, float) and math.isnan(val)):
+                val = None
+            cell        = ws.cell(row=r_idx, column=c_idx, value=val)
+            cell.font   = Font(name=ARIAL, size=FS)
+            cell.border = _border_analisi(c_idx, 1, n_cols, is_last)
+
+
 def genera_excel(dati: dict,
                  nome_portafoglio: str = "Portafoglio",
                  data_report: str = None,
@@ -220,6 +252,9 @@ def genera_excel(dati: dict,
         ("esposizione_valutaria",    "Valute",         "Esposizione Valutaria"),
         ("esposizione_settoriale",   "Settori",        "Esposizione Settoriale"),
         ("confronto_bv_fv",         "BV_vs_FV",       "Book Value vs Fair Value per Asset Class"),
+        ("scadenze_bucket",         "Scadenze",        "Distribuzione per Bucket di Scadenza"),
+        ("duration_ponderata",      "Duration",        "Duration Ponderata per Asset Class"),
+        ("sensitivity_tassi",       "Sensitivity",     "Stress Test Tassi – Approssimazione di Taylor"),
         ("top_operazioni",          "Top20_Operazioni","Top 20 Operazioni di Periodo"),
     ]
 
@@ -302,6 +337,25 @@ def genera_excel(dati: dict,
                 cell        = ws_det.cell(row=r_idx, column=c_idx, value=val)
                 cell.font   = Font(name=ARIAL, size=FS)
                 cell.border = _border_analisi(c_idx, 1, n_det, is_last)
+
+
+    # ------------------------------------------------------------------ #
+    # RAW SHEET INPUT (in fondo al workbook)                              #
+    # ------------------------------------------------------------------ #
+    raw_config = [
+        ("raw_inventory",  "96_Inventory",        "Inventory N + N-1"),
+        ("raw_income",     "97_Income",            "Income N + N-1"),
+        ("raw_posizioni",  "96_Posizioni",         "Posizioni"),
+        ("transaction_report", "98_TransactionReport", "Transaction Report"),
+    ]
+    for chiave, nome_foglio, titolo in raw_config:
+        if chiave not in dati or dati[chiave] is None:
+            continue
+        df_raw = dati[chiave]
+        if isinstance(df_raw, pd.DataFrame) and df_raw.empty:
+            continue
+        ws_raw = wb.create_sheet(title=nome_foglio)
+        _scrivi_foglio_raw(ws_raw, df_raw, titolo)
 
     return wb
 
