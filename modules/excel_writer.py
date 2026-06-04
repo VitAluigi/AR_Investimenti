@@ -58,26 +58,27 @@ def _is_nodiv_col(col_name):
     """Colonne che non vanno mai divise per il divisore (duration, convexity, %)."""
     n = str(col_name).lower()
     return any(k in n for k in [
-        "dur.",          # Dur. Ponderata N, Dur. Pond.
-        "duration",      # Modified Duration
-        "conv.",         # Conv. Pond.
+        "dur.",
+        "duration",
+        "conv.",
         "convexity",
-        "(%)",           # ΔP -200bp (%) — già percentuale
-        "peso",          # Peso % — già percentuale
-        "var %",         # Var % — già percentuale
-        "diff %",        # Diff % — già percentuale
+        "(%)",
+        "peso",
+        "var %",
+        "diff %",
         "rendimento",
     ])
-
 
 def _is_pl_col(col_name):
     n = str(col_name).lower()
     return any(k in n for k in [
         "realizzo", "valutazione", "variazione", "var %",
         "differenza", "diff %", "pl totale",
-        "p/l",      # P/L Titolo LC, P/L Cambio LC, P/L Totale LC
-        "importo",  # Importo LC (negativo = vendita)
-        "δp",       # Sensitivity Taylor ΔP
+        "p/l",
+        "importo",
+        "δp",
+        "oci",
+        "ecl",
     ])
 
 
@@ -128,13 +129,13 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
         for c_idx, val in enumerate(row, start_col):
             col_name    = df.columns[c_idx - start_col]
             is_perc     = _is_perc_col(col_name)
-            display_val = val if is_perc else _div(val, divisore)
+            display_val = val if (is_perc or _is_nodiv_col(col_name)) else _div(val, divisore)
 
             cell        = ws.cell(row=r_idx, column=c_idx, value=display_val)
             cell.font   = Font(name=ARIAL, size=FS, bold=is_tot, color=NERO)
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
-        if isinstance(display_val, str) and is_perc:
+            if isinstance(display_val, str) and is_perc:
                 # Casi speciali _var_pct: "+100%", "-100%", ">100%", "<-100%"
                 cell.alignment = Alignment(horizontal="right")
                 if display_val.startswith("+") or display_val.startswith(">"):
@@ -160,13 +161,11 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 # GENERAZIONE WORKBOOK
 # ---------------------------------------------------------------------------
 
-
 def _scrivi_foglio_raw(ws, df: pd.DataFrame, titolo: str):
     """Scrive un foglio raw con header blu e dati senza divisori."""
     ws.sheet_view.showGridLines = False
     n_cols = len(df.columns)
 
-    # Header
     for c_idx, col_name in enumerate(df.columns, 1):
         cell = ws.cell(row=1, column=c_idx, value=str(col_name))
         cell.font      = Font(name=ARIAL, size=FS, bold=True, color=BIANCO)
@@ -178,12 +177,10 @@ def _scrivi_foglio_raw(ws, df: pd.DataFrame, titolo: str):
     ws.auto_filter.ref = f"A1:{get_column_letter(n_cols)}1"
     ws.freeze_panes    = "A2"
 
-    # Dati
     for r_idx, row in enumerate(df.itertuples(index=False), 2):
         is_last = (r_idx == 1 + len(df))
         ws.row_dimensions[r_idx].height = 12
         for c_idx, val in enumerate(row, 1):
-            # Converti NaT/NaN in None
             import math
             if val is pd.NaT or (isinstance(val, float) and math.isnan(val)):
                 val = None
@@ -265,22 +262,22 @@ def genera_excel(dati: dict,
     # FOGLI ANALISI                                                        #
     # ------------------------------------------------------------------ #
     config_fogli = [
-        ("patrimoniale_asset_class", "AssetClass",    "Composizione per Asset Class"),
-        ("patrimoniale_fv_level",    "FVLevel",        "Asset Class per Fair Value Level"),
-        ("oci_per_asset_class",         "OCI",            "OCI per Asset Class (IFRS9)"),
-        ("composizione_valuation_class", "ValuationClass", "Composizione per Valuation Class"),
-        ("rating_governativi",       "Rating_Gov",     "Rating – Titoli Governativi"),
-        ("rating_non_governativi",   "Rating_NonGov",  "Rating – Titoli Non Governativi"),
-        ("geografia_governativi",    "Geografia_Gov",  "Distribuzione Geografica Governativi"),
-        ("top_holdings",             "Top10_Holdings", "Top 10 Holdings per Book Value"),
-        ("esposizione_valutaria",    "Valute",         "Esposizione Valutaria"),
-        ("esposizione_settoriale",   "Settori",        "Esposizione Settoriale"),
-        ("confronto_bv_fv",         "BV_vs_FV",       "Book Value vs Fair Value per Asset Class"),
-        ("scadenze_bucket",         "Scadenze",        "Distribuzione per Bucket di Scadenza"),
-        ("duration_ponderata",      "Duration",        "Duration Ponderata per Asset Class"),
-        ("sensitivity_tassi",       "Sensitivity",     "Stress Test Tassi – Approssimazione di Taylor"),
-        ("economica_completa",       "Economica",      "Analisi Economica per Asset Class"),
-        ("top_operazioni",          "Top20_Operazioni","Top 20 Operazioni di Periodo"),
+        ("patrimoniale_asset_class",     "AssetClass",     "Composizione per Asset Class"),
+        ("patrimoniale_fv_level",        "FVLevel",         "Asset Class per Fair Value Level"),
+        ("oci_per_asset_class",          "OCI",             "OCI per Asset Class (IFRS9)"),
+        ("composizione_valuation_class", "ValuationClass",  "Composizione per Valuation Class"),
+        ("rating_governativi",           "Rating_Gov",      "Rating – Titoli Governativi"),
+        ("rating_non_governativi",       "Rating_NonGov",   "Rating – Titoli Non Governativi"),
+        ("geografia_governativi",        "Geografia_Gov",   "Distribuzione Geografica Governativi"),
+        ("top_holdings",                 "Top10_Holdings",  "Top 10 Holdings per Book Value"),
+        ("esposizione_valutaria",        "Valute",          "Esposizione Valutaria"),
+        ("esposizione_settoriale",       "Settori",         "Esposizione Settoriale"),
+        ("confronto_bv_fv",             "BV_vs_FV",        "Book Value vs Fair Value per Asset Class"),
+        ("scadenze_bucket",             "Scadenze",         "Distribuzione per Bucket di Scadenza"),
+        ("duration_ponderata",          "Duration",         "Duration Ponderata per Asset Class"),
+        ("sensitivity_tassi",           "Sensitivity",      "Stress Test Tassi – Approssimazione di Taylor"),
+        ("economica_completa",           "Economica",       "Analisi Economica per Asset Class"),
+        ("top_operazioni",              "Top20_Operazioni", "Top 20 Operazioni di Periodo"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
@@ -303,43 +300,47 @@ def genera_excel(dati: dict,
         ws_det.sheet_view.showGridLines = False
 
         ETICHETTE = {
-            "isin":                "ISIN",
-            "descrizione":         "Descrizione",
-            "asset_class":         "Asset Class",
-            "quantita":            "Quantità",
-            "prezzo_carico":       "Prezzo Carico",
-            "book_value":          "Book Value N",
-            "book_value_prev":     "Book Value N-1",
-            "fair_value":          "Fair Value N",
-            "fair_value_prev":     "Fair Value N-1",
-            "fair_value_level":    "Fair Value Level",
-            "tipo_emittente":      "Tipo Emittente",
-            "rating":              "Rating",
-            "paese":               "Paese",
-            "valuta":              "Valuta",
-            "settore":             "Settore",
-            "cedola":              "Interessi N",
-            "cedola_prev":         "Interessi N-1",
-            "dividendi":           "Dividendi N",
-            "dividendi_prev":      "Dividendi N-1",
-            "pl_realizzo":         "PL Realizzo N",
-            "pl_realizzo_prev":    "PL Realizzo N-1",
-            "pl_valutazione":      "PL Valutazione N",
-            "pl_valutazione_prev": "PL Valutazione N-1",
-            "pl_totale_db":        "PL Totale N",
-            "pl_totale_db_prev":   "PL Totale N-1",
+            "isin":                    "ISIN",
+            "descrizione":             "Descrizione",
+            "asset_class":             "Asset Class",
+            "quantita":                "Quantità",
+            "prezzo_carico":           "Prezzo Carico",
+            "book_value":              "Book Value N",
+            "book_value_prev":         "Book Value N-1",
+            "fair_value":              "Fair Value N",
+            "fair_value_prev":         "Fair Value N-1",
+            "fair_value_level":        "Fair Value Level",
+            "tipo_emittente":          "Tipo Emittente",
+            "rating":                  "Rating",
+            "paese":                   "Paese",
+            "valuta":                  "Valuta",
+            "settore":                 "Settore",
+            "cedola":                  "Interessi N",
+            "cedola_prev":             "Interessi N-1",
+            "dividendi":               "Dividendi N",
+            "dividendi_prev":          "Dividendi N-1",
+            "pl_realizzo":             "PL Realizzo N",
+            "pl_realizzo_prev":        "PL Realizzo N-1",
+            "pl_valutazione":          "PL Valutazione N",
+            "pl_valutazione_prev":     "PL Valutazione N-1",
+            "pl_totale_db":            "PL Totale N",
+            "pl_totale_db_prev":       "PL Totale N-1",
+            "oci_lc":                  "OCI LC N",
+            "oci_lc_prev":             "OCI LC N-1",
+            "ecl_lc":                  "ECL LC N",
+            "ecl_lc_prev":             "ECL LC N-1",
             "modified_duration":       "Modified Duration",
             "modified_duration_prev":  "Modified Duration N-1",
             "convexity":               "Convexity",
             "quantita_prev":           "Quantità N-1",
             "fair_value_level_prev":   "Fair Value Level N-1",
             "data_acquisto":           "Data Acquisto",
-            "scadenza":            "Scadenza",
-            "valuation_area":      "Valuation Area",
-            "company_name":        "Società",
-            "portfolio_name":      "Portafoglio",
-            "valuation_class":     "Valuation Class",
-            "bond_classification": "Bond Classification",
+            "scadenza":                "Scadenza",
+            "valuation_area":          "Valuation Area",
+            "company_name":            "Società",
+            "portfolio_name":          "Portafoglio",
+            "valuation_class":         "Valuation Class",
+            "bond_classification":     "Bond Classification",
         }
         df_det     = dati["dettaglio"].rename(columns=ETICHETTE)
         n_det      = len(df_det.columns)
@@ -363,14 +364,13 @@ def genera_excel(dati: dict,
                 cell.font   = Font(name=ARIAL, size=FS)
                 cell.border = _border_analisi(c_idx, 1, n_det, is_last)
 
-
     # ------------------------------------------------------------------ #
     # RAW SHEET INPUT (in fondo al workbook)                              #
     # ------------------------------------------------------------------ #
     raw_config = [
-        ("raw_inventory",  "96_Inventory",        "Inventory N + N-1"),
-        ("raw_income",     "97_Income",            "Income N + N-1"),
-        ("raw_posizioni",  "96_Posizioni",         "Posizioni"),
+        ("raw_inventory",      "96_Inventory",        "Inventory N + N-1"),
+        ("raw_income",         "97_Income",            "Income N + N-1"),
+        ("raw_posizioni",      "96_Posizioni",         "Posizioni"),
         ("transaction_report", "98_TransactionReport", "Transaction Report"),
     ]
     for chiave, nome_foglio, titolo in raw_config:
