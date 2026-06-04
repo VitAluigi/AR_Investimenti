@@ -240,7 +240,9 @@ def genera_word(dati: dict, kpi: dict,
                 "approssimazione di Taylor al secondo ordine: "
                 "ΔP ≈ BV × (−D_mod × Δy + 1/2 × C × Δy^2)."
             )
-            _aggiungi_tabella(doc, dati["sensitivity_tassi"])
+            df_sens = dati["sensitivity_tassi"]
+            cols_word = [c for c in df_sens.columns if "(€)" not in str(c)]
+            _aggiungi_tabella(doc, df_sens[cols_word])
             commento = _commento_ai(
                 "Stress test tassi di interesse",
                 dati["sensitivity_tassi"].to_json(orient="records", force_ascii=False), kpi)
