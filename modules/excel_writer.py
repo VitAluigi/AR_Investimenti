@@ -18,9 +18,15 @@ FS_Titoli = 14
 def _fill(hex_color):
     return PatternFill("solid", fgColor=hex_color)
 
-def _border():
-    s = Side(style="thin", color=KPMG_BLU)
-    return Border(left=s, right=s, top=s, bottom=s)
+def _border(c_idx, start_col, end_col, is_last_row=False):
+    s_blu  = Side(style="thin", color=KPMG_BLU)
+    s_none = Side(style=None)
+    return Border(
+        left   = s_blu if c_idx == start_col else s_none,
+        right  = s_blu if c_idx == end_col   else s_none,
+        top    = s_none,
+        bottom = s_blu if is_last_row else s_none,
+    )
 
 def _border_analisi(c_idx, start_col, end_col, is_last_row=False):
     s_blu  = Side(style="thin", color=KPMG_BLU)
