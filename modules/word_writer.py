@@ -20,7 +20,7 @@ def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
     prompt = f"""Sei un analista finanziario senior che redige una relazione professionale
 in {REPORT_LINGUA} per un cliente istituzionale.
 
-Scrivi 3-5 frasi di commento per la sezione "{sezione}".
+Scrivi 5-7 frasi di commento per la sezione "{sezione}".
 Book Value totale portafoglio: {nav:,.2f} €
 
 Dati aggregati:
