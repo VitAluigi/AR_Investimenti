@@ -276,7 +276,7 @@ def genera_word(dati: dict, kpi: dict,
     doc.add_paragraph()
     p_note = doc.add_paragraph(
         f"Report generato automaticamente il {data_report}. "
-        "I dati sono elaborati sulla base del database fornito. "
+        "Attenzione: le liriche che state per ascoltare potrebbero urtare la vostra sensibilità. I racconti contenuti in questa Analytical Review sono riferiti a fatti reali e riflettono le opinioni e le esperienze del Senior in charge.​"
     )
     p_note.runs[0].font.size = Pt(8)
     p_note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
