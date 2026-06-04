@@ -177,15 +177,17 @@ def genera_word(dati: dict, kpi: dict,
     _aggiungi_titolo(doc, "2. Analisi Patrimoniale", 1)
 
     sezioni_patrimoniali = [
-        ("patrimoniale_asset_class", "2.1 Composizione per Asset Class"),
-        ("patrimoniale_fv_level", "2.2 Distribuzione per Fair Value Level"),
-        ("rating_governativi", "2.3 Qualità creditizia – Titoli Governativi"),
-        ("rating_non_governativi", "2.4 Qualità creditizia – Titoli Non Governativi"),
-        ("geografia_governativi", "2.5 Distribuzione geografica – Governativi"),
-        ("esposizione_valutaria", "2.6 Esposizione Valutaria"),
-        ("esposizione_settoriale", "2.7 Esposizione Settoriale"),
-        ("top_holdings", "2.8 Principali Holdings"),
-        ("confronto_bv_fv", "2.9 Book Value vs Fair Value"),
+    ("patrimoniale_asset_class", "2.1 Composizione per Asset Class"),
+    ("patrimoniale_fv_level",    "2.2 Distribuzione per Fair Value Level"),
+    ("rating_governativi",       "2.3 Qualità creditizia – Titoli Governativi"),
+    ("rating_non_governativi",   "2.4 Qualità creditizia – Titoli Non Governativi"),
+    ("geografia_governativi",    "2.5 Distribuzione geografica – Governativi"),
+    ("esposizione_valutaria",    "2.6 Esposizione Valutaria"),
+    ("esposizione_settoriale",   "2.7 Esposizione Settoriale"),
+    ("top_holdings",             "2.8 Principali Holdings"),
+    ("confronto_bv_fv",         "2.9 Book Value vs Fair Value"),
+    ("composizione_valuation_class", "2.10 Composizione per Valuation Class"),
+    ("oci_per_asset_class",     "2.11 OCI per Asset Class (IFRS9)"),
     ]
 
     for chiave, titolo_sez in sezioni_patrimoniali:
@@ -202,12 +204,20 @@ def genera_word(dati: dict, kpi: dict,
     # 3. ANALISI ECONOMICA                                                 #
     # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "3. Analisi Economica", 1)
-    if "economica_completa" in dati and not dati["economica_completa"].empty:
-        _aggiungi_titolo(doc, "3.1 Risultato economico per Asset Class", 2)
-        _aggiungi_tabella(doc, dati["economica_completa"])
-        commento = _commento_ai(
-            "Analisi Economica",
-            dati["economica_completa"].to_json(orient="records", force_ascii=False), kpi)
+    
+    sezioni_economiche = [
+        ("economica_completa",            "3.1 Risultato economico per Asset Class"),
+        ("economica_interessi_dividendi", "3.2 Interessi e Dividendi per Asset Class"),
+        ("economica_pl_realizzo",         "3.3 P/L Realizzo per Asset Class"),
+        ("economica_pl_valutazione",      "3.4 P/L Valutazione per Asset Class"),
+    ]
+    
+    for chiave, titolo_sez in sezioni_economiche:
+        if chiave not in dati or dati[chiave] is None or dati[chiave].empty:
+            continue
+        _aggiungi_titolo(doc, titolo_sez, 2)
+        _aggiungi_tabella(doc, dati[chiave])
+        commento = _commento_ai(titolo_sez, dati[chiave].to_json(orient="records", force_ascii=False), kpi)
         if commento:
             doc.add_paragraph(commento)
 
