@@ -34,7 +34,14 @@ Linee guida:
 - Massimo 100 parole"""
 
     risposta = chiedi_ai(prompt, max_tokens=300)
-    if not risposta:
+    if risposta:
+        # Rimuovi formattazione markdown (titoli, grassetti, ecc.)
+        import re
+        risposta = re.sub(r'^#+\s*', '', risposta, flags=re.MULTILINE)
+        risposta = re.sub(r'\*\*(.*?)\*\*', r'\1', risposta)
+        risposta = re.sub(r'\*(.*?)\*', r'\1', risposta)
+        risposta = risposta.strip()
+    else:
         print(f"[AVVISO] Commento AI non disponibile per '{sezione}', uso testo di fallback.")
     return risposta
 
