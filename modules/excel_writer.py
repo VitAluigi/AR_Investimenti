@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/excel_writer.py — Generazione Excel formattato
+# modules/excel_writer.py - Generazione Excel
 # =============================================================================
 
 from openpyxl import Workbook
@@ -66,7 +66,7 @@ def _is_pl_col(col_name):
 
 
 # ---------------------------------------------------------------------------
-# SCRIVI FOGLIO ANALISI
+# ANALISI
 # ---------------------------------------------------------------------------
 
 def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
@@ -142,7 +142,6 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 # ---------------------------------------------------------------------------
 # GENERAZIONE WORKBOOK
 # ---------------------------------------------------------------------------
-
 
 def _scrivi_foglio_raw(ws, df: pd.DataFrame, titolo: str):
     """Scrive un foglio raw con header blu e dati senza divisori."""
@@ -344,7 +343,7 @@ def genera_excel(dati: dict,
                 cell.border = _border_analisi(c_idx, 1, n_det, is_last)
 
     # ------------------------------------------------------------------ #
-    # RAW SHEET INPUT (in fondo al workbook)                              #
+    # RAW SHEET INPUT                              #
     # ------------------------------------------------------------------ #
     raw_config = [
         ("raw_inventory", "96_Inventory", "Inventory N + N-1"),
