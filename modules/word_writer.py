@@ -35,7 +35,7 @@ def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
     - Inizia direttamente con il commento
     - Massimo 200 parole"""
 
-    risposta = chiedi_ai(prompt, max_tokens=300)
+    risposta = chiedi_ai(prompt, max_tokens=500)
     if risposta:
         # Rimuovi formattazione markdown (titoli, grassetti, ecc.)
         import re
