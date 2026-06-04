@@ -1,8 +1,8 @@
 # =============================================================================
-# modules/ai_client.py - Client AI unificato (Claude o Azure, stesso contratto)
+# modules/ai_client.py - Client AI unificato (Claude o Azure)
 # =============================================================================
 # Unico punto in cui cambia il provider. mapper.py e word_writer.py
-# chiamano sempre chiedi_ai() senza sapere chi risponde sotto.
+# chiamano sempre chiedi_ai().
 # =============================================================================
 
 import re
