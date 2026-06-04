@@ -24,7 +24,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("SPINGERE CAVALLO")
+st.title("Tool AI per AR Investimenti")
 st.caption("Carica il file Excel grezzo e genera automaticamente il report completo.")
 
 # ---------------------------------------------------------------------------
