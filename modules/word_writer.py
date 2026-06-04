@@ -268,7 +268,6 @@ def genera_word(dati: dict, kpi: dict,
     p_note = doc.add_paragraph(
         f"Report generato automaticamente il {data_report}. "
         "I dati sono elaborati sulla base del database fornito. "
-        "Il presente documento ha finalità informative interne."
     )
     p_note.runs[0].font.size = Pt(8)
     p_note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
