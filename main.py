@@ -227,6 +227,22 @@ def genera_report(path_input: str,
         df_mapped = esegui_mapping(df_ptf_n)
 
     dati = calcola_analisi(df_mapped, df_tx, filtri)
+
+    # Aggiungi i raw sheet di input per visualizzazione in fondo al report
+    if tipo == "ship":
+        # Inventory N + N-1 concatenati con colonna Anno
+        inv_n_raw  = df_ptf_n.copy();  inv_n_raw.insert(0,  "Anno", df_ptf_n.get("Date",  pd.Series(["N"]*len(df_ptf_n))).iloc[0])
+        inv_n1_raw = df_ptf_n1.copy(); inv_n1_raw.insert(0, "Anno", df_ptf_n1.get("Date", pd.Series(["N-1"]*len(df_ptf_n1))).iloc[0])
+        dati["raw_inventory"] = pd.concat([inv_n_raw, inv_n1_raw], ignore_index=True)
+        # Income N + N-1 concatenati
+        df_inc_n, df_inc_n1 = dfs_eco
+        inc_n_raw  = df_inc_n.copy();  inc_n_raw.insert(0,  "Anno", df_inc_n.get("Date To",  pd.Series(["N"]*len(df_inc_n))).iloc[0])
+        inc_n1_raw = df_inc_n1.copy(); inc_n1_raw.insert(0, "Anno", df_inc_n1.get("Date To", pd.Series(["N-1"]*len(df_inc_n1))).iloc[0])
+        dati["raw_income"] = pd.concat([inc_n_raw, inc_n1_raw], ignore_index=True)
+    else:
+        # SOFIA: foglio posizioni grezzo
+        dati["raw_posizioni"] = df_ptf_n.copy()
+
     return genera_output(dati, nome_portafoglio, output_dir)
 
 
