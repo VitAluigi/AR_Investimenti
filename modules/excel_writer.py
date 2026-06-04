@@ -229,12 +229,17 @@ def genera_excel(dati: dict,
     if "kpi" in dati and dati["kpi"]:
         kpi     = dati["kpi"]
         num_fmt = _num_fmt(divisore)
+        def _var(n, n1):
+            if n is not None and n1 is not None:
+                return round(n - n1, 2)
+            return None
+
         rows_kpi = [
-            ("NAV Totale",   kpi.get("nav"),         kpi.get("nav_prev"), kpi.get("var_nav")),
-            ("N° Titoli",    kpi.get("n_titoli"),     None,                None),
-            ("P&L Totale",   kpi.get("pl_totale"),    None,                None),
-            ("Proventi",     kpi.get("proventi"),     None,                None),
-            ("Rendimento %", kpi.get("rendimento_%"), None,                None),
+            ("NAV Totale",   kpi.get("nav"),          kpi.get("nav_prev"),          kpi.get("var_nav")),
+            ("N° Titoli",    kpi.get("n_titoli"),      kpi.get("n_titoli_prev"),     _var(kpi.get("n_titoli"),     kpi.get("n_titoli_prev"))),
+            ("P&L Totale",   kpi.get("pl_totale"),     kpi.get("pl_totale_prev"),    _var(kpi.get("pl_totale"),    kpi.get("pl_totale_prev"))),
+            ("Proventi",     kpi.get("proventi"),      kpi.get("proventi_prev"),     _var(kpi.get("proventi"),     kpi.get("proventi_prev"))),
+            ("Rendimento %", kpi.get("rendimento_%"),  kpi.get("rendimento_%_prev"), _var(kpi.get("rendimento_%"), kpi.get("rendimento_%_prev"))),
         ]
         for i, (label, n, n1, var) in enumerate(rows_kpi, 7):
             ws_r.row_dimensions[i].height = 12
@@ -252,6 +257,8 @@ def genera_excel(dati: dict,
                     cell.number_format = '0'
                 elif label == "Rendimento %":
                     cell.number_format = '0.00"%"'
+                elif label in ("NAV Totale", "P&L Totale", "Proventi"):
+                    cell.number_format = num_fmt
                 else:
                     cell.number_format = num_fmt
 
