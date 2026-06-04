@@ -134,13 +134,13 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
             cell.font   = Font(name=ARIAL, size=FS, bold=is_tot, color=NERO)
             cell.border = _border_analisi(c_idx, start_col, end_col, is_last_row)
 
-            if isinstance(display_val, str) and is_perc:
+        if isinstance(display_val, str) and is_perc:
                 # Casi speciali _var_pct: "+100%", "-100%", ">100%", "<-100%"
                 cell.alignment = Alignment(horizontal="right")
                 if display_val.startswith("+") or display_val.startswith(">"):
-                    cell.font = Font(name=ARIAL, size=FS, bold=is_tot, color="006100")
+                    cell.fill = _fill("C6EFCE")
                 elif display_val.startswith("-") or display_val.startswith("<"):
-                    cell.font = Font(name=ARIAL, size=FS, bold=is_tot, color="9C0006")
+                    cell.fill = _fill("FFC7CE")
             elif isinstance(display_val, (int, float)) and not isinstance(display_val, bool):
                 cell.number_format = '0.00"%"' if is_perc else num_fmt
                 cell.alignment     = Alignment(horizontal="right")
