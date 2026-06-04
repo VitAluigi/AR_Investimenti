@@ -18,20 +18,22 @@ from modules.ai_client import chiedi_ai
 def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
     nav = kpi.get("nav", 0)
     prompt = f"""Sei un analista finanziario senior che redige una relazione professionale
-in {REPORT_LINGUA} per un cliente istituzionale.
-
-Scrivi 5-7 frasi di commento per la sezione "{sezione}".
-Book Value totale portafoglio: {nav:,.2f} €
-
-Dati aggregati:
-{dati_json}
-
-Linee guida:
-- Tono professionale e oggettivo
-- Evidenzia le voci più rilevanti per peso o variazione
-- Segnala eventuali concentrazioni o elementi degni di nota
-- No elenchi puntati, solo prosa fluente
-- Massimo 100 parole"""
+    in {REPORT_LINGUA} per un cliente istituzionale.
+    
+    Scrivi 3-5 frasi di commento per la sezione "{sezione}".
+    Book Value totale portafoglio: {nav:,.2f} €
+    
+    Dati aggregati:
+    {dati_json}
+    
+    Linee guida:
+    - Tono professionale e oggettivo
+    - Evidenzia le voci più rilevanti per peso o variazione
+    - Segnala eventuali concentrazioni o elementi degni di nota
+    - No elenchi puntati, solo prosa fluente
+    - NON includere titoli o intestazioni nel testo
+    - Inizia direttamente con il commento
+    - Massimo 200 parole"""
 
     risposta = chiedi_ai(prompt, max_tokens=300)
     if risposta:
