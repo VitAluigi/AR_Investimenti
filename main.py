@@ -263,7 +263,8 @@ def _merge_ptf_eco(df_ptf: pd.DataFrame,
                 if c in ("isin", "cedola", "cedola_prev",
                          "pl_realizzo", "pl_realizzo_prev",
                          "pl_valutazione", "pl_valutazione_prev",
-                         "pl_totale_db", "pl_totale_db_prev")]
+                         "pl_totale_db", "pl_totale_db_prev",
+                        "ecl_lc", "ecl_lc_prev")]
     if "isin" not in df_ptf.columns or "isin" not in df_eco.columns:
         return df_ptf
     df_eco_agg = df_eco[eco_cols].groupby("isin", as_index=False).sum()
