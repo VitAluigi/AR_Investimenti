@@ -21,7 +21,7 @@ def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
 in {REPORT_LINGUA} per un cliente istituzionale.
 
 Scrivi 3-5 frasi di commento per la sezione "{sezione}".
-NAV totale portafoglio: {nav:,.2f} €
+Book Value totale portafoglio: {nav:,.2f} €
 
 Dati aggregati:
 {dati_json}
@@ -46,7 +46,6 @@ def _imposta_stili(doc: Document):
     style = doc.styles["Normal"]
     style.font.name = "Arial"
     style.font.size = Pt(10)
-
 
 def _aggiungi_titolo(doc: Document, testo: str, livello: int = 1):
     heading = doc.add_heading(testo, level=livello)
