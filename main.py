@@ -17,7 +17,7 @@ from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
                               economica_completa, top_holdings,
                               esposizione_valutaria, esposizione_settoriale,
                               confronto_bv_fv, top_operazioni,
-                              scadenze_bucket, duration_ponderata,
+                              scadenze_bucket, duration_ponderata, sensitivity_tassi,
                               unisci_ship_patrimoniale, unisci_ship_economico)
 from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
@@ -151,6 +151,9 @@ def calcola_analisi(df: pd.DataFrame,
 
     if disponibili.get("duration_ponderata"):
         dati["duration_ponderata"] = duration_ponderata(df)
+
+    if disponibili.get("sensitivity_tassi"):
+        dati["sensitivity_tassi"] = sensitivity_tassi(df)
 
     if (disponibili.get("confronto_bv_fv") and
             "book_value" in df.columns and
