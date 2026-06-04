@@ -19,6 +19,15 @@ def scopri_analisi(df: pd.DataFrame) -> dict:
             risultato[nome] = (
                 "asset_class" in colonne and any(v in colonne for v in voci)
             )
+        elif nome == "oci_per_asset_class":
+            # OCI è disponibile solo se la colonna esiste E ha valori non-zero
+            # (esclude automaticamente le viste GAAP dove OCI = 0)
+            risultato[nome] = (
+                "oci_lc" in colonne and
+                "asset_class" in colonne and
+                df["oci_lc"].notna().any() and
+                df["oci_lc"].abs().sum() > 0
+            )
         else:
             risultato[nome] = all(r in colonne for r in requisiti)
     return risultato
@@ -577,6 +586,31 @@ def kpi_portafoglio(df: pd.DataFrame) -> dict:
         "var_nav":           round(nav - nav_prev, 2) if nav_prev else None,
         "var_nav_%":         _var_pct(nav, nav_prev),
     }
+
+
+# ---------------------------------------------------------------------------
+# 6. TOP OPERAZIONI — TRANSACTION REPORT
+# ---------------------------------------------------------------------------
+
+_TX_COL_MAP = {
+    "position value date":                "data",
+    "business transaction category name": "tipo",
+    "isin code":                          "isin",
+    "security id name":                   "descrizione",
+    "product category name":              "asset_class",
+    "nominal/units":                      "nominale",
+    "transaction amount lc":              "importo_lc",
+    "transaction amount pc":              "importo_pc",
+    "realised gain loss security lc":     "pl_titolo_lc",
+    "realised gain loss security pc":     "pl_titolo_pc",
+    "realised gain loss fx lc":           "pl_cambio_lc",
+    "realised gain loss lc":              "pl_totale_lc",
+    "issue currency":                     "valuta",
+    "counterparty name":                  "controparte",
+    "operation price pc":                 "prezzo",
+}
+
+_TX_TIPI_RILEVANTI = {"sale", "purchase"}
 
 
 def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
