@@ -374,6 +374,84 @@ def duration_ponderata(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([agg, pd.DataFrame([tot_row])], ignore_index=True)
 
 
+
+def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Stress test tasso di interesse con approssimazione di Taylor al 2° ordine.
+
+    Formula:
+        ΔP ≈ BV × (−D_mod × Δy + ½ × C × Δy²)
+
+    dove Δy è lo shift parallelo della curva dei tassi.
+    D_mod e C sono pesati per Book Value per asset class.
+
+    Shift testati: −200bp, −100bp, −50bp, +50bp, +100bp, +200bp
+    """
+    SHIFTS_BP  = [-200, -100, -50, +50, +100, +200]
+    SHIFTS_DY  = [s / 10000 for s in SHIFTS_BP]
+    SHIFT_LBLS = [f"{'+' if s>0 else ''}{s}bp" for s in SHIFTS_BP]
+
+    # Filtra solo titoli con duration e book_value valorizzati
+    df = df.copy()
+    mask = df["modified_duration"].notna() & df["book_value"].notna()
+    df_filt = df[mask].copy()
+
+    if df_filt.empty:
+        return pd.DataFrame()
+
+    # Convexity: usa se disponibile, altrimenti stima D² + D (appross. bond bullet)
+    if "convexity" in df_filt.columns and df_filt["convexity"].notna().any():
+        df_filt["_conv"] = df_filt["convexity"].fillna(
+            df_filt["modified_duration"]**2 + df_filt["modified_duration"]
+        )
+    else:
+        df_filt["_conv"] = (df_filt["modified_duration"]**2 +
+                            df_filt["modified_duration"])
+
+    # Duration e Convexity ponderate per asset class
+    agg = df_filt.groupby("asset_class", dropna=False).apply(
+        lambda g: pd.Series({
+            "BV":       g["book_value"].sum(),
+            "D_pond":   (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
+            "C_pond":   (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
+        })
+    ).reset_index()
+
+    # Totale portafoglio
+    tot_bv   = df_filt["book_value"].sum()
+    tot_dpond = (df_filt["book_value"] * df_filt["modified_duration"]).sum() / tot_bv
+    tot_cpond = (df_filt["book_value"] * df_filt["_conv"]).sum() / tot_bv
+    tot_row  = pd.DataFrame([{
+        "asset_class": "Totale",
+        "BV": tot_bv,
+        "D_pond": tot_dpond,
+        "C_pond": tot_cpond,
+    }])
+    agg = pd.concat([agg, tot_row], ignore_index=True)
+
+    # Calcola ΔP per ogni shift
+    for lbl, dy in zip(SHIFT_LBLS, SHIFTS_DY):
+        agg[f"ΔP {lbl} (€)"] = (
+            agg["BV"] * (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2)
+        ).round(2)
+        agg[f"ΔP {lbl} (%)"] = (
+            (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2) * 100
+        ).round(4)
+
+    # Rinomina colonne espositive
+    agg = agg.rename(columns={
+        "asset_class": "Asset Class",
+        "BV":          "Book Value",
+        "D_pond":      "Dur. Pond.",
+        "C_pond":      "Conv. Pond.",
+    })
+
+    # Arrotonda duration e convexity
+    agg["Dur. Pond."]  = agg["Dur. Pond."].round(3)
+    agg["Conv. Pond."] = agg["Conv. Pond."].round(3)
+
+    return agg
+
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
     nav         = _sum(df, "book_value")
     nav_prev    = _sum(df, "book_value_prev")
