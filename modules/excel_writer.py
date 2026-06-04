@@ -61,6 +61,7 @@ def _is_pl_col(col_name):
         "differenza", "diff %", "pl totale",
         "p/l",      # P/L Titolo LC, P/L Cambio LC, P/L Totale LC
         "importo",  # Importo LC (negativo = vendita)
+        "δp",       # Sensitivity Taylor ΔP
     ])
 
 
@@ -267,17 +268,18 @@ def genera_excel(dati: dict,
             "pl_valutazione_prev": "PL Valutazione N-1",
             "pl_totale_db":        "PL Totale N",
             "pl_totale_db_prev":   "PL Totale N-1",
-            "data_acquisto":       "Data Acquisto",
+            "modified_duration":       "Modified Duration",
+            "modified_duration_prev":  "Modified Duration N-1",
+            "convexity":               "Convexity",
+            "quantita_prev":           "Quantità N-1",
+            "fair_value_level_prev":   "Fair Value Level N-1",
+            "data_acquisto":           "Data Acquisto",
             "scadenza":            "Scadenza",
             "valuation_area":      "Valuation Area",
             "company_name":        "Società",
             "portfolio_name":      "Portafoglio",
             "valuation_class":     "Valuation Class",
             "bond_classification": "Bond Classification",
-            "modified_duration":       "Modified Duration",
-            "modified_duration_prev":  "Modified Duration N-1",
-            "quantita_prev":           "Quantità N-1",
-            "fair_value_level_prev":   "Fair Value Level N-1",            
         }
         df_det     = dati["dettaglio"].rename(columns=ETICHETTE)
         n_det      = len(df_det.columns)
