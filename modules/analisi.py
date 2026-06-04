@@ -764,7 +764,7 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
         return df_eco_n
 
     eco_canonici = ["cedola", "dividendi", "pl_realizzo",
-                    "pl_valutazione", "pl_totale_db"]
+                    "pl_valutazione", "ecl_lc", "pl_totale_db"]
     cols_n1 = [c for c in eco_canonici
                if c in df_eco_n1.columns and c not in merge_on]
 
