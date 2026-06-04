@@ -116,7 +116,7 @@ def _fmt(val, is_perc=False) -> str:
 # ---------------------------------------------------------------------------
 
 def genera_word(dati: dict, kpi: dict,
-                nome_portafoglio: str = "Portafoglio",
+                nome_portafoglio: str = "Portafoglio Società/Gruppo",
                 data_report: str = None,
                 unita: str = "€") -> Document:
 
@@ -136,7 +136,7 @@ def genera_word(dati: dict, kpi: dict,
 
     p2 = doc.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r2 = p2.add_run(f"AR Investimenti\nDati al {data_report}")
+    r2 = p2.add_run(f"AR Investimenti\nReport del {data_report}")
     r2.font.size = Pt(13)
     r2.font.name = "Arial"
     r2.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
