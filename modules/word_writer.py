@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/word_writer.py — Generazione report Word con commenti AI
+# modules/word_writer.py
 # =============================================================================
 
 import json
@@ -10,7 +10,6 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 import pandas as pd
 from config import REPORT_LINGUA
 from modules.ai_client import chiedi_ai
-
 
 # ---------------------------------------------------------------------------
 # Commento narrativo AI per una sezione
@@ -38,7 +37,6 @@ Linee guida:
     if not risposta:
         print(f"[AVVISO] Commento AI non disponibile per '{sezione}', uso testo di fallback.")
     return risposta
-
 
 # ---------------------------------------------------------------------------
 # Stili documento
@@ -79,13 +77,24 @@ def _aggiungi_tabella(doc: Document, df: pd.DataFrame):
         row_cells = table.add_row().cells
         is_totale = str(row_tuple[0]).strip().lower() == "totale"
         for i, val in enumerate(row_tuple):
-            col_name = df.columns[i]
-            if isinstance(val, float):
-                text = f"{val:.2f}%" if ("%" in str(col_name) or "peso" in str(col_name).lower()) else f"{val:,.2f} €"
+            col_name = str(df.columns[i]).lower()
+            is_perc  = "%" in col_name or "peso" in col_name
+            is_nodiv = any(k in col_name for k in ["dur.", "duration", "conv.", "convexity"])
+
+            if isinstance(val, str):
+                text = val  # casi speciali "+100%", ">100%" ecc.
+            elif isinstance(val, float):
+                if is_perc:
+                    text = f"{val:.2f}%"
+                elif is_nodiv:
+                    text = f"{val:.3f}"
+                else:
+                    text = f"{val:,.2f}"
             elif isinstance(val, int) and not isinstance(val, bool):
                 text = f"{val:,}"
             else:
                 text = str(val) if val is not None else ""
+
             cell = row_cells[i]
             cell.text = text
             p = cell.paragraphs[0]
@@ -98,12 +107,10 @@ def _aggiungi_tabella(doc: Document, df: pd.DataFrame):
 
     doc.add_paragraph()
 
-
 def _fmt(val, is_perc=False) -> str:
     if val is None:
         return "n.d."
     return f"{val:.2f}%" if is_perc else f"{val:,.2f} €"
-
 
 # ---------------------------------------------------------------------------
 # Generazione documento
@@ -123,28 +130,30 @@ def genera_word(dati: dict, kpi: dict,
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run(nome_portafoglio.upper())
-    run.font.bold  = True
-    run.font.size  = Pt(22)
+    run.font.bold = True
+    run.font.size = Pt(22)
     run.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
-    run.font.name  = "Arial"
+    run.font.name = "Arial"
 
     p2 = doc.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r2 = p2.add_run(f"Relazione patrimoniale ed economica\nDati al {data_report}")
-    r2.font.size  = Pt(13)
-    r2.font.name  = "Arial"
+    r2.font.size = Pt(13)
+    r2.font.name = "Arial"
     r2.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
 
     doc.add_page_break()
 
-    # --- 1. Executive Summary ---
+    # ------------------------------------------------------------------ #
+    # 1. EXECUTIVE SUMMARY                                                 #
+    # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "1. Executive Summary", 1)
     kpi_text = json.dumps({
-        "NAV totale":    _fmt(kpi.get("nav")),
-        "Num. titoli":   kpi.get("n_titoli"),
-        "P&L totale":    _fmt(kpi.get("pl_totale")),
-        "Proventi":      _fmt(kpi.get("proventi")),
-        "Rendimento %":  _fmt(kpi.get("rendimento_%"), is_perc=True),
+        "NAV totale": _fmt(kpi.get("nav")),
+        "Num. titoli": kpi.get("n_titoli"),
+        "P&L totale":  _fmt(kpi.get("pl_totale")),
+        "Proventi": _fmt(kpi.get("proventi")),
+        "Rendimento %": _fmt(kpi.get("rendimento_%"), is_perc=True),
     }, ensure_ascii=False)
 
     commento = _commento_ai("Executive Summary", kpi_text, kpi)
@@ -154,18 +163,21 @@ def genera_word(dati: dict, kpi: dict,
         f"Il risultato economico complessivo ammonta a {_fmt(kpi.get('pl_totale'))}."
     ))
 
-    # --- 2. Analisi Patrimoniale ---
+    # ------------------------------------------------------------------ #
+    # 2. ANALISI PATRIMONIALE                                              #
+    # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "2. Analisi Patrimoniale", 1)
 
     sezioni_patrimoniali = [
-        ("patrimoniale_asset_class",  "2.1 Composizione per Asset Class"),
-        ("patrimoniale_fv_level",     "2.2 Distribuzione per Fair Value Level"),
-        ("rating_governativi",        "2.3 Qualità creditizia – Titoli Governativi"),
-        ("rating_non_governativi",    "2.4 Qualità creditizia – Titoli Non Governativi"),
-        ("geografia_governativi",     "2.5 Distribuzione geografica – Governativi"),
-        ("esposizione_valutaria",     "2.6 Esposizione Valutaria"),
-        ("esposizione_settoriale",    "2.7 Esposizione Settoriale"),
-        ("top_holdings",              "2.8 Principali Holdings"),
+        ("patrimoniale_asset_class", "2.1 Composizione per Asset Class"),
+        ("patrimoniale_fv_level", "2.2 Distribuzione per Fair Value Level"),
+        ("rating_governativi", "2.3 Qualità creditizia – Titoli Governativi"),
+        ("rating_non_governativi", "2.4 Qualità creditizia – Titoli Non Governativi"),
+        ("geografia_governativi", "2.5 Distribuzione geografica – Governativi"),
+        ("esposizione_valutaria", "2.6 Esposizione Valutaria"),
+        ("esposizione_settoriale", "2.7 Esposizione Settoriale"),
+        ("top_holdings", "2.8 Principali Holdings"),
+        ("confronto_bv_fv", "2.9 Book Value vs Fair Value"),
     ]
 
     for chiave, titolo_sez in sezioni_patrimoniali:
@@ -178,24 +190,76 @@ def genera_word(dati: dict, kpi: dict,
         if commento:
             doc.add_paragraph(commento)
 
-    # --- 3. Analisi Economica ---
+    # ------------------------------------------------------------------ #
+    # 3. ANALISI ECONOMICA                                                 #
+    # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "3. Analisi Economica", 1)
     if "economica_completa" in dati and not dati["economica_completa"].empty:
-        df_eco = dati["economica_completa"]
         _aggiungi_titolo(doc, "3.1 Risultato economico per Asset Class", 2)
-        _aggiungi_tabella(doc, df_eco)
-        commento = _commento_ai("Analisi Economica", df_eco.to_json(orient="records", force_ascii=False), kpi)
+        _aggiungi_tabella(doc, dati["economica_completa"])
+        commento = _commento_ai(
+            "Analisi Economica",
+            dati["economica_completa"].to_json(orient="records", force_ascii=False), kpi)
         if commento:
             doc.add_paragraph(commento)
 
-    # --- 4. Considerazioni Finali ---
-    _aggiungi_titolo(doc, "4. Considerazioni Finali", 1)
-    ctx = json.dumps({"kpi": kpi_text, "analisi_prodotte": [k for k in dati if k != "kpi"]}, ensure_ascii=False)
+    # ------------------------------------------------------------------ #
+    # 4. ANALISI RISCHIO TASSO                                             #
+    # ------------------------------------------------------------------ #
+    has_rischio = any(k in dati and dati[k] is not None and not dati[k].empty
+                      for k in ["scadenze_bucket", "duration_ponderata", "sensitivity_tassi"])
+
+    if has_rischio:
+        _aggiungi_titolo(doc, "4. Analisi Rischio Tasso", 1)
+
+        if "scadenze_bucket" in dati and dati["scadenze_bucket"] is not None \
+                and not dati["scadenze_bucket"].empty:
+            _aggiungi_titolo(doc, "4.1 Distribuzione per Bucket di Scadenza", 2)
+            _aggiungi_tabella(doc, dati["scadenze_bucket"])
+            commento = _commento_ai(
+                "Distribuzione scadenze",
+                dati["scadenze_bucket"].to_json(orient="records", force_ascii=False), kpi)
+            if commento:
+                doc.add_paragraph(commento)
+
+        if "duration_ponderata" in dati and dati["duration_ponderata"] is not None \
+                and not dati["duration_ponderata"].empty:
+            _aggiungi_titolo(doc, "4.2 Duration Ponderata per Asset Class", 2)
+            _aggiungi_tabella(doc, dati["duration_ponderata"])
+            commento = _commento_ai(
+                "Duration ponderata",
+                dati["duration_ponderata"].to_json(orient="records", force_ascii=False), kpi)
+            if commento:
+                doc.add_paragraph(commento)
+
+        if "sensitivity_tassi" in dati and dati["sensitivity_tassi"] is not None \
+                and not dati["sensitivity_tassi"].empty:
+            _aggiungi_titolo(doc, "4.3 Stress Test Tassi – Approssimazione di Taylor", 2)
+            doc.add_paragraph(
+                "La seguente tabella riporta la variazione stimata del valore di portafoglio "
+                "per shift paralleli della curva dei tassi di interesse, calcolata con "
+                "approssimazione di Taylor al secondo ordine: "
+                "ΔP ≈ BV × (−D_mod × Δy + ½ × C × Δy²)."
+            )
+            _aggiungi_tabella(doc, dati["sensitivity_tassi"])
+            commento = _commento_ai(
+                "Stress test tassi di interesse",
+                dati["sensitivity_tassi"].to_json(orient="records", force_ascii=False), kpi)
+            if commento:
+                doc.add_paragraph(commento)
+
+    # ------------------------------------------------------------------ #
+    # 5. CONSIDERAZIONI FINALI                                             #
+    # ------------------------------------------------------------------ #
+    num_sez = 5 if has_rischio else 4
+    _aggiungi_titolo(doc, f"{num_sez}. Considerazioni Finali", 1)
+    ctx = json.dumps({
+        "kpi": kpi_text,
+        "analisi_prodotte": [k for k in dati if k not in ("kpi", "dettaglio")]
+    }, ensure_ascii=False)
     conclusioni = _commento_ai("Considerazioni finali e sintesi del portafoglio", ctx, kpi)
     doc.add_paragraph(conclusioni or (
-        "Sulla base dei dati analizzati, il portafoglio presenta una struttura diversificata "
-        "per asset class e profilo di rischio. Si raccomanda un monitoraggio periodico "
-        "delle esposizioni principali."
+        "Inserire commento."
     ))
 
     # Footer
@@ -209,7 +273,6 @@ def genera_word(dati: dict, kpi: dict,
     p_note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
     return doc
-
 
 def salva_word(doc: Document, path: str):
     doc.save(path)
