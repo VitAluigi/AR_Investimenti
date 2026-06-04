@@ -8,7 +8,7 @@ AI_PROVIDER = "claude"
 
 # --- Anthropic Claude (PC personale) ---
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-CLAUDE_MODEL   = "claude-haiku-4-5"
+CLAUDE_MODEL   = "claude-opus-4-6"
 
 # --- Azure OpenAI (azienda) ---
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
@@ -63,6 +63,11 @@ SCHEMA_CANONICO = {
     "pl_valutazione_prev":"PL Valutazione N-1",
     "pl_totale_db":      "PL Totale N",
     "pl_totale_db_prev": "PL Totale N-1",
+    # OCI e ECL (IFRS9)
+    "oci_lc":                "OCI LC",
+    "oci_no_recycling_lc":   "OCI w/o Recycling LC",
+    "ecl_lc":                "ECL LC",
+    "wb_loss_allowance_lc":  "W/B Loss Allowance LC",
     # Duration
     "modified_duration": "Modified Duration",
     "convexity":         "Convexity",
@@ -92,6 +97,8 @@ ANALISI_REQUISITI = {
     "scadenze_bucket":               ["book_value", "scadenza"],
     "duration_ponderata":            ["book_value", "modified_duration", "asset_class"],
     "sensitivity_tassi":             ["book_value", "modified_duration", "asset_class"],
+    "oci_per_asset_class":           ["oci_lc", "asset_class"],
+    "composizione_valuation_class":  ["book_value", "valuation_class", "asset_class"],
 }
 
 # --- Stile Excel ---
