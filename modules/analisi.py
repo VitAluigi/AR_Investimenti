@@ -1,5 +1,5 @@
 # =============================================================================
-# modules/analisi.py — Capability discovery e calcoli finanziari
+# modules/analisi.py
 # =============================================================================
 
 import pandas as pd
@@ -28,10 +28,9 @@ def report_analisi(disponibili: dict) -> str:
     attive   = [n for n, v in disponibili.items() if v]
     inattive = [n for n, v in disponibili.items() if not v]
     lines = [f"Analisi disponibili ({len(attive)}/{len(disponibili)}):"]
-    for a in attive:   lines.append(f"  OK {a}")
+    for a in attive: lines.append(f"  OK {a}")
     for i in inattive: lines.append(f"  KO {i}")
     return "\n".join(lines)
-
 
 # ---------------------------------------------------------------------------
 # 2. HELPERS
@@ -44,14 +43,14 @@ def _sum(df, col):
 
 def _var_pct(n, n1):
     """
-    Calcola variazione % con gestione casi speciali:
-    - N esiste, N-1 assente/zero  → "+100%"
-    - N-1 esiste, N assente/zero  → "-100%"
-    - Variazione > +100%          → ">100%"
-    - Variazione < -100%          → "<-100%"
+    Calcola variazione % con gestione casi particolari:
+    - N esiste, N-1 assente/zero  -> "+100%"
+    - N-1 esiste, N assente/zero  -> "-100%"
+    - Variazione > +100%          -> ">100%"
+    - Variazione < -100%          -> "<-100%"
     """
     import math
-    n_ok  = n  is not None and not (isinstance(n,  float) and math.isnan(n))  and n  != 0
+    n_ok = n is not None and not (isinstance(n,  float) and math.isnan(n))  and n  != 0
     n1_ok = n1 is not None and not (isinstance(n1, float) and math.isnan(n1)) and n1 != 0
 
     if n_ok and not n1_ok:
@@ -93,14 +92,13 @@ def _build_confronto(df_base: pd.DataFrame,
     agg = agg.sort_values("N", ascending=False)
     totale = {
         label_display: "Totale",
-        "N":           tot_n,
-        "Peso %":      100.0,
-        "N-1":         tot_n1,
-        "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
-        "Var %":       _var_pct(tot_n, tot_n1),
+        "N": tot_n,
+        "Peso %": 100.0,
+        "N-1": tot_n1,
+        "Variazione": round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
+        "Var %": _var_pct(tot_n, tot_n1),
     }
     return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
-
 
 # ---------------------------------------------------------------------------
 # 3. ANALISI PATRIMONIALE
@@ -108,7 +106,6 @@ def _build_confronto(df_base: pd.DataFrame,
 
 def patrimoniale_asset_class(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "asset_class", "book_value", "book_value_prev")
-
 
 def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
     def _pivot(col_val, suffix):
@@ -131,7 +128,6 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
     tot["Asset Class"] = "Totale"
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
-
 def rating_per_emittente(df: pd.DataFrame, tipo: str) -> pd.DataFrame:
     if tipo == "gov":
         mask = df["tipo_emittente"].str.lower().str.startswith("gov")
@@ -143,8 +139,8 @@ def rating_per_emittente(df: pd.DataFrame, tipo: str) -> pd.DataFrame:
 
     result = _build_confronto(sub, "rating", "book_value", "book_value_prev")
 
-    ordine = ["AAA","AA+","AA","AA-","A+","A","A-","BBB+","BBB","BBB-",
-              "BB+","BB","BB-","B+","B","B-","NR","N.R.","n.r."]
+    ordine = ["AAA+", "AAA", "AAA-", "AA+","AA","AA-","A+","A","A-","BBB+","BBB","BBB-",
+              "BB+","BB","BB-","B+","B","B-", "C", "#", "NR","N.R.","n.r."]
     label_col = result.columns[0]
     non_tot = result[result[label_col] != "Totale"].copy()
     tot_row = result[result[label_col] == "Totale"]
@@ -153,11 +149,9 @@ def rating_per_emittente(df: pd.DataFrame, tipo: str) -> pd.DataFrame:
     non_tot = non_tot.sort_values("_ord").drop(columns=["_ord"])
     return pd.concat([non_tot, tot_row], ignore_index=True)
 
-
 def geografia_governativi(df: pd.DataFrame) -> pd.DataFrame:
     mask = df["tipo_emittente"].str.lower().str.startswith("gov")
     return _build_confronto(df[mask], "paese", "book_value", "book_value_prev")
-
 
 def confronto_bv_fv(df: pd.DataFrame) -> pd.DataFrame:
     """Confronto Book Value vs Fair Value di mercato per asset class."""
@@ -175,22 +169,21 @@ def confronto_bv_fv(df: pd.DataFrame) -> pd.DataFrame:
     tot["Diff %"] = _var_pct(tot["Fair Value N"], tot["Book Value N"])
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
-
 # ---------------------------------------------------------------------------
 # 4. ANALISI ECONOMICA
 # ---------------------------------------------------------------------------
 
 def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     voci = [
-        ("Cedole/Int. N",    "cedola"),
-        ("Dividendi N",      "dividendi"),
-        ("PL Realizzo N",    "pl_realizzo"),
+        ("Cedole/Int. N", "cedola"),
+        ("Dividendi N", "dividendi"),
+        ("PL Realizzo N", "pl_realizzo"),
         ("PL Valutazione N", "pl_valutazione"),
     ]
     voci_prev = [
-        ("Cedole/Int. N-1",    "cedola_prev"),
-        ("Dividendi N-1",      "dividendi_prev"),
-        ("PL Realizzo N-1",    "pl_realizzo_prev"),
+        ("Cedole/Int. N-1", "cedola_prev"),
+        ("Dividendi N-1", "dividendi_prev"),
+        ("PL Realizzo N-1", "pl_realizzo_prev"),
         ("PL Valutazione N-1", "pl_valutazione_prev"),
     ]
 
@@ -239,8 +232,8 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
 
 def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     cols = ["descrizione", "book_value"]
-    if "asset_class"     in df.columns: cols.insert(1, "asset_class")
-    if "isin"            in df.columns: cols.insert(0, "isin")
+    if "asset_class" in df.columns: cols.insert(1, "asset_class")
+    if "isin" in df.columns: cols.insert(0, "isin")
     if "book_value_prev" in df.columns: cols.append("book_value_prev")
 
     result = (df[cols].copy()
@@ -263,15 +256,11 @@ def top_holdings(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
     return result.rename(columns={
         "isin": "ISIN", "descrizione": "Descrizione", "asset_class": "Asset Class"})
 
-
 def esposizione_valutaria(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "valuta", "book_value", "book_value_prev")
 
-
 def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "settore", "book_value", "book_value_prev")
-
-
 
 def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -281,7 +270,7 @@ def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
     """
     BUCKET_ORDER = ["0-1 anni", "1-3 anni", "3-5 anni",
                     "5-10 anni", "10-20 anni", "20-30 anni", ">30 anni"]
-    PERPETUAL   = "Perpetual"
+    PERPETUAL = "Perpetual"
 
     oggi = pd.Timestamp.today().normalize()
 
@@ -293,19 +282,19 @@ def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
         except Exception:
             return None
         anni = (scad - oggi).days / 365.25
-        if anni < 0:      return "Scaduto"
-        if anni <= 1:     return "0-1 anni"
-        if anni <= 3:     return "1-3 anni"
-        if anni <= 5:     return "3-5 anni"
-        if anni <= 10:    return "5-10 anni"
-        if anni <= 20:    return "10-20 anni"
-        if anni <= 30:    return "20-30 anni"
+        if anni < 0: return "Scaduto"
+        if anni <= 1: return "0-1 anni"
+        if anni <= 3: return "1-3 anni"
+        if anni <= 5: return "3-5 anni"
+        if anni <= 10: return "5-10 anni"
+        if anni <= 20: return "10-20 anni"
+        if anni <= 30: return "20-30 anni"
         return ">30 anni"
 
     df = df.copy()
     df["_bucket"] = df["scadenza"].apply(_bucket)
 
-    # Escludi righe senza scadenza (Azioni, Fondi ecc.)
+    # Esclusione strumenti senza Maturity
     df_filt = df[df["_bucket"].notna()].copy()
     if df_filt.empty:
         return pd.DataFrame(columns=["Bucket", "N", "Peso %", "N-1", "Variazione", "Var %"])
@@ -321,7 +310,7 @@ def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
         agg_prev.columns = ["Bucket", "N-1"]
         agg = agg.merge(agg_prev, on="Bucket", how="left")
         agg["Variazione"] = (agg["N"] - agg["N-1"]).round(2)
-        agg["Var %"]      = agg.apply(lambda r: _var_pct(r["N"], r["N-1"]), axis=1)
+        agg["Var %"] = agg.apply(lambda r: _var_pct(r["N"], r["N-1"]), axis=1)
         tot_n1 = agg["N-1"].sum()
     else:
         agg["N-1"] = agg["Variazione"] = agg["Var %"] = None
@@ -333,20 +322,19 @@ def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
     agg = agg.sort_values("_ord").drop(columns=["_ord"])
 
     totale = {
-        "Bucket":      "Totale",
-        "N":           tot_n,
-        "Peso %":      100.0,
-        "N-1":         tot_n1,
-        "Variazione":  round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
-        "Var %":       _var_pct(tot_n, tot_n1),
+        "Bucket": "Totale",
+        "N": tot_n,
+        "Peso %": 100.0,
+        "N-1": tot_n1,
+        "Variazione": round(tot_n - tot_n1, 2) if tot_n1 is not None else None,
+        "Var %": _var_pct(tot_n, tot_n1),
     }
     return pd.concat([agg, pd.DataFrame([totale])], ignore_index=True)
-
 
 def duration_ponderata(df: pd.DataFrame) -> pd.DataFrame:
     """
     Duration media ponderata per Book Value, aggregata per asset class.
-    Considera solo i titoli con modified_duration valorizzata.
+    Solo titoli con modified_duration valorizzata.
     Duration ponderata = sum(BV_i * dur_i) / sum(BV_i)
     """
     df = df.copy()
@@ -381,36 +369,34 @@ def duration_ponderata(df: pd.DataFrame) -> pd.DataFrame:
 
     agg = agg.sort_values("Book Value N", ascending=False)
 
-    # Riga totale — duration ponderata sull'intero portafoglio
-    tot_bv  = df_filt["book_value"].sum()
+    # Riga totale - duration ponderata sull'intero portafoglio
+    tot_bv = df_filt["book_value"].sum()
     tot_dur = df_filt["_bv_dur"].sum()
     tot_row = {"Asset Class": "Totale", "Book Value N": tot_bv,
                "Dur. Ponderata N": round(tot_dur / tot_bv, 3) if tot_bv else None}
     if "Dur. Ponderata N-1" in agg.columns:
         if not df_filt_n1.empty:
-            tot_bv_n1  = df_filt_n1["book_value_prev"].sum()
+            tot_bv_n1 = df_filt_n1["book_value_prev"].sum()
             tot_dur_n1 = df_filt_n1["_bv_dur_prev"].sum()
             tot_row["Dur. Ponderata N-1"] = round(tot_dur_n1 / tot_bv_n1, 3) if tot_bv_n1 else None
 
     return pd.concat([agg, pd.DataFrame([tot_row])], ignore_index=True)
-
-
 
 def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     """
     Stress test tasso di interesse con approssimazione di Taylor al 2° ordine.
 
     Formula:
-        ΔP ≈ BV × (−D_mod × Δy + ½ × C × Δy²)
+        Delta_P ≈ BV × (−D_mod × Delta_y + 1/2 × C × Delta_y^2)
 
-    dove Δy è lo shift parallelo della curva dei tassi.
+    dove Delta_y è lo shift della curva dei tassi.
     D_mod e C sono pesati per Book Value per asset class.
 
-    Shift testati: −200bp, −100bp, −50bp, +50bp, +100bp, +200bp
+    Shift testati: −200bps, −100bps, −50bps, +50bps, +100bps, +200bps
     """
     SHIFTS_BP  = [-200, -100, -50, +50, +100, +200]
     SHIFTS_DY  = [s / 10000 for s in SHIFTS_BP]
-    SHIFT_LBLS = [f"{'+' if s>0 else ''}{s}bp" for s in SHIFTS_BP]
+    SHIFT_LBLS = [f"{'+' if s>0 else ''}{s}bps" for s in SHIFTS_BP]
 
     # Filtra solo titoli con duration e book_value valorizzati
     df = df.copy()
@@ -420,7 +406,7 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     if df_filt.empty:
         return pd.DataFrame()
 
-    # Convexity: usa se disponibile, altrimenti stima D² + D (appross. bond bullet)
+    # Convexity se disponibile, altrimenti stima D² + D (appross. bond bullet)
     if "convexity" in df_filt.columns and df_filt["convexity"].notna().any():
         df_filt["_conv"] = df_filt["convexity"].fillna(
             df_filt["modified_duration"]**2 + df_filt["modified_duration"]
@@ -432,17 +418,17 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     # Duration e Convexity ponderate per asset class
     agg = df_filt.groupby("asset_class", dropna=False).apply(
         lambda g: pd.Series({
-            "BV":       g["book_value"].sum(),
-            "D_pond":   (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
-            "C_pond":   (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
+            "BV": g["book_value"].sum(),
+            "D_pond": (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
+            "C_pond": (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
         })
     ).reset_index()
 
     # Totale portafoglio
-    tot_bv   = df_filt["book_value"].sum()
+    tot_bv = df_filt["book_value"].sum()
     tot_dpond = (df_filt["book_value"] * df_filt["modified_duration"]).sum() / tot_bv
     tot_cpond = (df_filt["book_value"] * df_filt["_conv"]).sum() / tot_bv
-    tot_row  = pd.DataFrame([{
+    tot_row = pd.DataFrame([{
         "asset_class": "Totale",
         "BV": tot_bv,
         "D_pond": tot_dpond,
@@ -462,9 +448,9 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     # Rinomina colonne espositive
     agg = agg.rename(columns={
         "asset_class": "Asset Class",
-        "BV":          "Book Value",
-        "D_pond":      "Dur. Pond.",
-        "C_pond":      "Conv. Pond.",
+        "BV": "Book Value",
+        "D_pond": "Dur. Pond.",
+        "C_pond": "Conv. Pond.",
     })
 
     # Arrotonda duration e convexity
@@ -474,54 +460,52 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 def kpi_portafoglio(df: pd.DataFrame) -> dict:
-    nav         = _sum(df, "book_value")
-    nav_prev    = _sum(df, "book_value_prev")
-    n_titoli    = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
+    nav = _sum(df, "book_value")
+    nav_prev = _sum(df, "book_value_prev")
+    n_titoli = int(df["isin"].nunique()) if "isin" in df.columns else len(df)
 
     if "pl_totale_db" in df.columns:
         pl_tot = _sum(df, "pl_totale_db")
     else:
         pl_tot = _sum(df, "pl_realizzo") + _sum(df, "pl_valutazione")
 
-    proventi    = _sum(df, "cedola") + _sum(df, "dividendi")
+    proventi = _sum(df, "cedola") + _sum(df, "dividendi")
     pl_realizzo = _sum(df, "pl_realizzo")
 
     return {
-        "nav":          nav,
-        "nav_prev":     nav_prev,
-        "n_titoli":     n_titoli,
-        "pl_totale":    pl_tot,
-        "proventi":     proventi,
+        "nav": nav,
+        "nav_prev": nav_prev,
+        "n_titoli": n_titoli,
+        "pl_totale": pl_tot,
+        "proventi": proventi,
         "rendimento_%": round((proventi + pl_realizzo) / nav * 100, 2) if nav > 0 else None,
-        "var_nav":      round(nav - nav_prev, 2) if nav_prev else None,
-        "var_nav_%":    _var_pct(nav, nav_prev),
+        "var_nav": round(nav - nav_prev, 2) if nav_prev else None,
+        "var_nav_%": _var_pct(nav, nav_prev),
     }
-
 
 # ---------------------------------------------------------------------------
 # 6. TOP OPERAZIONI — TRANSACTION REPORT
 # ---------------------------------------------------------------------------
 
 _TX_COL_MAP = {
-    "position value date":                "data",
+    "position value date": "data",
     "business transaction category name": "tipo",
-    "isin code":                          "isin",
-    "security id name":                   "descrizione",
-    "product category name":              "asset_class",
-    "nominal/units":                      "nominale",
-    "transaction amount lc":              "importo_lc",
-    "transaction amount pc":              "importo_pc",
-    "realised gain loss security lc":     "pl_titolo_lc",
-    "realised gain loss security pc":     "pl_titolo_pc",
-    "realised gain loss fx lc":           "pl_cambio_lc",
-    "realised gain loss lc":              "pl_totale_lc",
-    "issue currency":                     "valuta",
-    "counterparty name":                  "controparte",
-    "operation price pc":                 "prezzo",
+    "isin code": "isin",
+    "security id name": "descrizione",
+    "product category name": "asset_class",
+    "nominal/units": "nominale",
+    "transaction amount lc": "importo_lc",
+    "transaction amount pc": "importo_pc",
+    "realised gain loss security lc": "pl_titolo_lc",
+    "realised gain loss security pc": "pl_titolo_pc",
+    "realised gain loss fx lc": "pl_cambio_lc",
+    "realised gain loss lc": "pl_totale_lc",
+    "issue currency": "valuta",
+    "counterparty name": "controparte",
+    "operation price pc": "prezzo",
 }
 
 _TX_TIPI_RILEVANTI = {"sale", "purchase"}
-
 
 def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     if df_tx is None or df_tx.empty:
@@ -557,16 +541,16 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     df = df[cols_out]
 
     etichette = {
-        "data":        "Data",
-        "tipo":        "Tipo",
-        "isin":        "ISIN",
+        "data": "Data",
+        "tipo": "Tipo",
+        "isin": "ISIN",
         "descrizione": "Titolo",
         "asset_class": "Asset Class",
-        "valuta":      "Valuta",
-        "nominale":    "Nominale",
-        "prezzo":      "Prezzo",
-        "importo_lc":  "Importo LC",
-        "importo_pc":  "Importo PC",
+        "valuta": "Valuta",
+        "nominale": "Nominale",
+        "prezzo": "Prezzo",
+        "importo_lc": "Importo LC",
+        "importo_pc": "Importo PC",
         "pl_titolo_lc":"P/L Titolo LC",
         "pl_titolo_pc":"P/L Titolo PC",
         "pl_cambio_lc":"P/L Cambio LC",
@@ -574,7 +558,6 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
         "controparte": "Controparte",
     }
     return df.rename(columns=etichette)
-
 
 # ---------------------------------------------------------------------------
 # 7. FUNZIONI SHIP — unione N / N-1
@@ -588,14 +571,13 @@ def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
     except Exception:
         return None
 
-
 def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                               df_n1: pd.DataFrame) -> pd.DataFrame:
     """
-    Unisce i due Inventory SHIP (N e N-1) con outer join su isin.
+    Unione dei due Inventory SHIP (N e N-1) con outer join su isin.
     Nel DB SHIP ogni ISIN appare una sola volta per sheet, ma la
     Valuation Area e Valuation Class possono cambiare tra N e N-1
-    per lo stesso titolo — quindi la chiave è solo isin.
+    per lo stesso titolo - quindi la chiave è solo isin.
 
     Casistiche gestite:
     - Titoli in entrambi gli anni: book_value e book_value_prev valorizzati
@@ -611,7 +593,7 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
 
     # Chiave primaria SHIP: Valuation Area + Company + Portfolio + ISIN
     # (ogni titolo può apparire più volte con VA/Company/Portfolio diversi,
-    # ma la combinazione è unica per riga — e stabile tra N e N-1)
+    # ma la combinazione è unica per riga e stabile tra N e N-1)
     chiavi_ship = ["valuation_area", "company_name", "portfolio_name", "isin"]
     merge_on = [c for c in chiavi_ship
                 if c in df_n.columns and c in df_n1.columns]
@@ -627,7 +609,7 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                       and c in df_n.columns
                       and c not in merge_on]
 
-    # Colonne anagrafiche (stringa) di N-1 → incluse in _prev per recupero titoli venduti
+    # Colonne anagrafiche (stringa) di N-1 -> incluse in _prev per recupero titoli venduti
     COLS_ANA = ["asset_class", "tipo_emittente", "rating", "paese", "valuta",
                 "settore", "descrizione", "valuation_class", "bond_classification",
                 "company_name", "portfolio_name", "scadenza", "data_acquisto"]
@@ -648,7 +630,6 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
             result.drop(columns=[f"{col}_prev"], inplace=True, errors="ignore")
 
     return result
-
 
 def unisci_ship_economico(df_eco_n: pd.DataFrame,
                            df_eco_n1: pd.DataFrame) -> pd.DataFrame:
