@@ -54,6 +54,21 @@ def _is_perc_col(col_name):
     n = str(col_name).lower()
     return "peso" in n or "var %" in n or "diff %" in n
 
+def _is_nodiv_col(col_name):
+    """Colonne che non vanno mai divise per il divisore (duration, convexity, %)."""
+    n = str(col_name).lower()
+    return any(k in n for k in [
+        "dur.",
+        "duration",
+        "conv.",
+        "convexity",
+        "(%)",
+        "peso",
+        "var %",
+        "diff %",
+        "rendimento",
+    ])
+
 def _is_pl_col(col_name):
     n = str(col_name).lower()
     return any(k in n for k in [
@@ -112,7 +127,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
         for c_idx, val in enumerate(row, start_col):
             col_name = df.columns[c_idx - start_col]
             is_perc = _is_perc_col(col_name)
-            display_val = val if is_perc else _div(val, divisore)
+            display_val = val if (is_perc or _is_nodiv_col(col_name)) else _div(val, divisore)
 
             cell = ws.cell(row=r_idx, column=c_idx, value=display_val)
             cell.font = Font(name=ARIAL, size=FS, bold=is_tot, color=NERO)
