@@ -8,7 +8,7 @@ AI_PROVIDER = "claude"
 
 # --- Anthropic Claude (PC personale) ---
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-CLAUDE_MODEL   = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL   = "claude-haiku-4-5"
 
 # --- Azure OpenAI (azienda) ---
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
