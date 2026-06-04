@@ -199,6 +199,9 @@ with st.expander("Anteprima dati"):
 # ---------------------------------------------------------------------------
 # SEZIONE 5: GENERA
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# SEZIONE 5: GENERA
+# ---------------------------------------------------------------------------
 st.divider()
 st.subheader("Genera Report")
 
@@ -209,25 +212,27 @@ if st.button("Genera Excel + Word", type="primary", use_container_width=True):
         path_excel, path_word = genera_output(
             dati, nome_portafoglio, output_dir, unita=unita
         )
-
+    st.session_state["path_excel"] = path_excel
+    st.session_state["path_word"]  = path_word
     st.success("Report generati con successo!")
 
+if "path_excel" in st.session_state and "path_word" in st.session_state:
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
-        with open(path_excel, "rb") as f:
+        with open(st.session_state["path_excel"], "rb") as f:
             st.download_button(
                 label="Scarica Excel",
                 data=f,
-                file_name=os.path.basename(path_excel),
+                file_name=os.path.basename(st.session_state["path_excel"]),
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
     with col_dl2:
-        with open(path_word, "rb") as f:
+        with open(st.session_state["path_word"], "rb") as f:
             st.download_button(
                 label="Scarica Word",
                 data=f,
-                file_name=os.path.basename(path_word),
+                file_name=os.path.basename(st.session_state["path_word"]),
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True,
             )
