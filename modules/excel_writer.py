@@ -285,6 +285,10 @@ def genera_excel(dati: dict,
         ("sensitivity_tassi",           "Sensitivity",      "Stress Test Tassi – Approssimazione di Taylor"),
         ("economica_completa",           "Economica",       "Analisi Economica per Asset Class"),
         ("top_operazioni",              "Top20_Operazioni", "Top 20 Operazioni di Periodo"),
+        ("effetti_inventory",  "EffettiInventory",   "Effetto Nominale e Mercato (Inventory N vs N-1)"),
+        ("effetti_tx_top20",   "EffettiTX_Top20",    "Top 20 Operazioni per Effetto Totale"),
+        ("effetti_det",        "EffettiOp_Dettaglio","Effetti per Operazione (Nominale + Prezzo)"),
+        ("effetti_rie",        "EffettiOp_Riepilogo","Riepilogo per ISIN (Nominale + Prezzo + Mercato)"),
     ]
 
     for chiave, nome_foglio, nome_analisi in config_fogli:
@@ -348,6 +352,7 @@ def genera_excel(dati: dict,
             "portfolio_name":          "Portafoglio",
             "valuation_class":         "Valuation Class",
             "bond_classification":     "Bond Classification",
+            "security_account_group":  "Security Account Group",
         }
         df_det     = dati["dettaglio"].rename(columns=ETICHETTE)
         n_det      = len(df_det.columns)
@@ -380,6 +385,24 @@ def genera_excel(dati: dict,
         ("raw_posizioni",      "96_Posizioni",         "Posizioni"),
         ("transaction_report", "98_TransactionReport", "Transaction Report"),
     ]
+    # Check portafoglio effetti (dict → foglio dedicato)
+    if "effetti_check" in dati and dati["effetti_check"]:
+        ws_chk = wb.create_sheet(title="EffettiOp_Check")
+        ws_chk.sheet_view.showGridLines = False
+        chk = dati["effetti_check"]
+        ws_chk.cell(row=2, column=2, value="kpmg").font = Font(name="KPMG Logo", size=FS_Titoli, color=KPMG_BLU)
+        ws_chk.cell(row=3, column=2, value="Check Riconciliazione Effetti").font = Font(name="KPMG Bold", size=FS_Titoli, color=KPMG_BLU)
+        for r_idx, (k, v) in enumerate(chk.items(), 5):
+            ws_chk.cell(row=r_idx, column=2, value=k).font = Font(name=ARIAL, size=FS, bold=True)
+            cell = ws_chk.cell(row=r_idx, column=3, value=v)
+            cell.font = Font(name=ARIAL, size=FS)
+            cell.number_format = '#,##0'
+            cell.alignment = Alignment(horizontal="right")
+            if k == "Check Portafoglio":
+                cell.fill = _fill("C6EFCE") if abs(v or 0) < 1000 else _fill("FFC7CE")
+        for col, w in [("A",2),("B",30),("C",18)]:
+            ws_chk.column_dimensions[col].width = w
+
     for chiave, nome_foglio, titolo in raw_config:
         if chiave not in dati or dati[chiave] is None:
             continue
