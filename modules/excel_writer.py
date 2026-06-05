@@ -363,7 +363,6 @@ def genera_excel(dati: dict,
                 cell.border = _border_analisi(c_idx, 1, n_det, is_last)
 
     # Dati di Input
-
     raw_config = [
         ("raw_inventory","Inventory","Inventory N + N-1"),
         ("raw_income","Income","Income N + N-1"),
