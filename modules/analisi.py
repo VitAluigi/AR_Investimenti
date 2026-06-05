@@ -933,16 +933,21 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         return None
 
     # Aggrega per ISIN (somma su VA/Company/Portfolio se più righe)
+    has_fv_prev = "fair_value_prev" in ptf.columns
     agg_cols = {"book_value": "sum"}
     if has_bv_prev:  agg_cols["book_value_prev"] = "sum"
     if has_fv:       agg_cols["fair_value"]       = "sum"
+    if has_fv_prev:  agg_cols["fair_value_prev"]  = "sum"
     if has_nom:      agg_cols["quantita"]         = "sum"
     if has_nom_prev: agg_cols["quantita_prev"]    = "sum"
 
     ref = ptf.groupby("isin").agg(agg_cols).reset_index()
 
-    # Prezzi unitari
-    if has_nom_prev and has_bv_prev:
+    # Prezzi unitari — usa FV per allineare il check a FV_N − FV_N1
+    if has_fv_prev and has_nom_prev:
+        ref["p_n1"] = (ref["fair_value_prev"] /
+                       ref["quantita_prev"].replace(0, np.nan)).round(6)
+    elif has_nom_prev and has_bv_prev:
         ref["p_n1"] = (ref["book_value_prev"] /
                        ref["quantita_prev"].replace(0, np.nan)).round(6)
     else:
@@ -1043,8 +1048,11 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
     # ── Riepilogo per ISIN + Effetto Mercato ─────────────────────────────
     rie_rows = []
 
+    has_fv_prev_rie = "fair_value_prev" in ref_idx.columns
+
     for isin, row_ref in ref_idx.iterrows():
         bv_n1  = float(row_ref.get("book_value_prev", 0) or 0) if has_bv_prev else 0.0
+        fv_n1  = float(row_ref.get("fair_value_prev", 0) or 0) if has_fv_prev_rie else bv_n1
         bv_n   = float(row_ref.get("book_value",      0) or 0)
         fv_n   = float(row_ref.get("fair_value",      np.nan)) if has_fv else np.nan
         nom_n  = float(row_ref.get("quantita",        0) or 0)  if has_nom else 0.0
@@ -1058,13 +1066,14 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         p_last  = stato.get(isin,{}).get("p_rif", float(row_ref.get("p_n1", np.nan)))
         eff_mkt = round(fv_n - nom_n * p_last, 0)                   if (not np.isnan(fv_n) and not np.isnan(p_last) and nom_n > 0) else np.nan
 
-        # Check ISIN: Σ effetti vs FV_N − BV_N1
+        # Check ISIN: Σ effetti vs FV_N − FV_N1
         sigma    = (tot_nom or 0) + (tot_pre or 0) + (eff_mkt or 0)
-        delta_fv = (fv_n - bv_n1) if (not np.isnan(fv_n)) else np.nan
+        delta_fv = (fv_n - fv_n1) if (not np.isnan(fv_n)) else np.nan
         check    = round(sigma - delta_fv, 0) if not np.isnan(delta_fv) else np.nan
 
         rie_rows.append({
             "ISIN":             isin,
+            "FV N-1":           fv_n1,
             "BV N-1":           bv_n1,
             "BV N":             bv_n,
             "FV N":             fv_n,
@@ -1078,23 +1087,23 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
 
     df_rie = pd.DataFrame(rie_rows)
 
-    # ── Check portafoglio totale ─────────────────────────────────────────
-    tot_bv_n1  = df_rie["BV N-1"].sum()
-    tot_fv_n   = df_rie["FV N"].dropna().sum()
+    # ── Check portafoglio totale (base: FV_N − FV_N1) ──────────────────
+    tot_fv_n1   = df_rie["FV N-1"].sum()  if "FV N-1" in df_rie.columns else df_rie["BV N-1"].sum()
+    tot_bv_n1   = df_rie["BV N-1"].sum()
+    tot_fv_n    = df_rie["FV N"].dropna().sum()
     tot_eff_nom = df_rie["Σ Eff. Nominale"].sum()
     tot_eff_pre = df_rie["Σ Eff. Prezzo"].sum()
     tot_eff_mkt = df_rie["Effetto Mercato"].dropna().sum()
     tot_sigma   = tot_eff_nom + tot_eff_pre + tot_eff_mkt
-    check_ptf   = round(tot_sigma - (tot_fv_n - tot_bv_n1), 0)
+    delta_fv    = tot_fv_n - tot_fv_n1
+    check_ptf   = round(tot_sigma - delta_fv, 0)
 
-    # RGL titoli venduti: usciti dal portafoglio, non catturati in FV_N
-    # (FV_N = 0 per venduti, ma hanno generato P/L realizzato)
+    # Laspeyres cross-term = residuo dopo aver escluso RGL titoli venduti
     rgl_venduti = df_rie[df_rie["FV N"].isna() | (df_rie["FV N"] == 0)]["Σ Eff. Prezzo"].sum()
-    # Cross-term: residuo Laspeyres per ISIN con sia Δqty che Δprezzo
     cross_term  = round(check_ptf - rgl_venduti, 0)
 
     check_summary = {
-        "BV N-1 totale":           round(tot_bv_n1, 0),
+        "FV N-1 totale":           round(tot_fv_n1, 0),
         "FV N totale":             round(tot_fv_n, 0),
         "─── Effetti ───":         "─────────────────────",
         "Σ Eff. Nominale":         round(tot_eff_nom, 0),
@@ -1102,7 +1111,7 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         "Σ Eff. Mercato":          round(tot_eff_mkt, 0),
         "Σ Totale Effetti":        round(tot_sigma, 0),
         "─── Riconciliazione ───": "─────────────────────",
-        "FV N − BV N-1":           round(tot_fv_n - tot_bv_n1, 0),
+        "FV N − FV N-1":           round(delta_fv, 0),
         "RGL titoli venduti":       round(rgl_venduti, 0),
         "Cross-term Laspeyres":     cross_term,
         "Check Portafoglio":        check_ptf,
