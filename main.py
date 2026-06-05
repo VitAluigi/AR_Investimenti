@@ -19,6 +19,8 @@ from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
                               confronto_bv_fv, top_operazioni,
                               scadenze_bucket, duration_ponderata, sensitivity_tassi,
                               oci_per_asset_class, composizione_valuation_class,
+                              analisi_effetti_operazioni,
+                              analisi_effetti_inventory, analisi_effetti_tx_top20,
                               unisci_ship_patrimoniale, unisci_ship_economico)
 from modules.excel_writer import genera_excel, salva_excel
 from modules.word_writer  import genera_word, salva_word
@@ -117,7 +119,6 @@ def calcola_analisi(df: pd.DataFrame,
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
 
-    dati = {}
     dati["kpi"] = kpi_portafoglio(df)
 
     if disponibili.get("patrimoniale_asset_class"):
@@ -162,6 +163,9 @@ def calcola_analisi(df: pd.DataFrame,
     if disponibili.get("composizione_valuation_class"):
         dati["composizione_valuation_class"] = composizione_valuation_class(df)
 
+    if disponibili.get("effetti_inventory"):
+        dati["effetti_inventory"] = analisi_effetti_inventory(df)
+
     if (disponibili.get("confronto_bv_fv") and
             "book_value" in df.columns and
             "fair_value" in df.columns and
@@ -175,6 +179,17 @@ def calcola_analisi(df: pd.DataFrame,
         if df_top_op is not None and not df_top_op.empty:
             dati["top_operazioni"] = df_top_op
             print(f"    → Top operazioni: {len(df_top_op)} righe")
+        # Effetti nominale e prezzo (richiede Inventory N-1)
+        res_effetti = analisi_effetti_operazioni(df_tx, df)
+        if res_effetti is not None:
+            dati["effetti_det"]   = res_effetti["dettaglio"]
+            dati["effetti_rie"]   = res_effetti["riepilogo"]
+            dati["effetti_check"] = res_effetti["check_ptf"]
+            print(f"    → Check portafoglio: {res_effetti['check_ptf']['Check Portafoglio']:,.0f} (ideale=0)")
+        if disponibili.get("effetti_tx_top20"):
+            df_top20 = analisi_effetti_tx_top20(df_tx, df)
+            if df_top20 is not None and not df_top20.empty:
+                dati["effetti_tx_top20"] = df_top20
 
     dati["dettaglio"] = df
 
@@ -263,8 +278,7 @@ def _merge_ptf_eco(df_ptf: pd.DataFrame,
                 if c in ("isin", "cedola", "cedola_prev",
                          "pl_realizzo", "pl_realizzo_prev",
                          "pl_valutazione", "pl_valutazione_prev",
-                         "pl_totale_db", "pl_totale_db_prev",
-                        "ecl_lc", "ecl_lc_prev")]
+                         "pl_totale_db", "pl_totale_db_prev")]
     if "isin" not in df_ptf.columns or "isin" not in df_eco.columns:
         return df_ptf
     df_eco_agg = df_eco[eco_cols].groupby("isin", as_index=False).sum()
