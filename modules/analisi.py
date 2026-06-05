@@ -1049,19 +1049,19 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
     rgl_venduti = df_rie[df_rie["FV N"].isna() | (df_rie["FV N"] == 0)]["Somma Eff. Prezzo"].sum()
     cross_term  = round(check_ptf - rgl_venduti, 0)
 
+    check_finale = round(tot_sigma - delta_fv - rgl_venduti - cross_term, 0)
+
     check_summary = {
         "FV N-1 totale": round(tot_fv_n1, 0),
         "FV N totale": round(tot_fv_n, 0),
-        "Effetti": "",
         "Somma Eff. Nominale": round(tot_eff_nom, 0),
         "Somma Eff. Prezzo": round(tot_eff_pre, 0),
         "Somma Eff. Mercato": round(tot_eff_mkt, 0),
         "Somma Totale Effetti": round(tot_sigma, 0),
-        "Rico": "",
         "FV N - FV N-1": round(delta_fv, 0),
         "RGL titoli venduti": round(rgl_venduti, 0),
         "Cross-term Laspeyres": cross_term,
-        "Check Portafoglio": check_ptf,
+        "Check Portafoglio": check_finale,
     }
 
     return {
