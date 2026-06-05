@@ -26,6 +26,7 @@ def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
     Linee guida:
     - Tono professionale e oggettivo
     - Evidenzia le voci più rilevanti per peso o variazione
+    - Per il confronto Book Value - NAV, utilizza l'analisi Book Value vs Fair Value
     - Segnala eventuali concentrazioni o elementi degni di nota
     - No elenchi puntati, solo prosa fluente
     - NON includere titoli o intestazioni nel testo
