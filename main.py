@@ -32,12 +32,6 @@ from config import INPUT_DIR, OUTPUT_DIR
 # ---------------------------------------------------------------------------
 
 def leggi_portafoglio(path: str):
-    """
-    Rileva il tipo di DB dal numero di sheet:
-      2 sheet → SOFIA:  [Posizioni, Transaction Report]
-      5 sheet → SHIP:   [Inventory N, Inventory N-1, Income N, Income N-1, Transaction Report]
-      altri   → fallback SOFIA (primo sheet = posizioni, ultimo = tx)
-    """
     print(f"[1/5] Lettura file: {path}")
     try:
         xls         = pd.ExcelFile(path)
@@ -51,15 +45,13 @@ def leggi_portafoglio(path: str):
             return df
 
         if n_sheets == 2:
-            # ── SOFIA ──────────────────────────────────────────────────────
             print(f"    → DB SOFIA ({sheet_names})")
             df_ptf = _leggi(sheet_names[0])
             df_tx  = _leggi(sheet_names[1])
-            print(f"    → Posizioni: {len(df_ptf)} righe | Transaction Report: {len(df_tx)} righe")
+            print(f"    → Posizioni: {len(df_ptf)} | Transaction: {len(df_tx)} righe")
             return "sofia", df_ptf, None, None, df_tx
 
         elif n_sheets == 5:
-            # ── SHIP ───────────────────────────────────────────────────────
             print(f"    → DB SHIP ({sheet_names})")
             df_inv_n  = _leggi(sheet_names[0])
             df_inv_n1 = _leggi(sheet_names[1])
@@ -72,7 +64,6 @@ def leggi_portafoglio(path: str):
             return "ship", df_inv_n, df_inv_n1, (df_inc_n, df_inc_n1), df_tx
 
         else:
-            # ── Fallback ───────────────────────────────────────────────────
             print(f"    → DB non riconosciuto ({n_sheets} sheet), tratto come SOFIA")
             df_ptf = _leggi(sheet_names[0])
             df_tx  = _leggi(sheet_names[-1]) if n_sheets > 1 else None
@@ -102,11 +93,8 @@ def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def calcola_analisi(df: pd.DataFrame,
-                    df_tx:    pd.DataFrame | None = None,
-                    filtri:   dict | None = None) -> dict:
-    """
-    filtri: dict opzionale con chiavi 'valuation_area', 'company_name', 'portfolio_name'
-    """
+                    df_tx:  pd.DataFrame | None = None,
+                    filtri: dict | None = None) -> dict:
     print(f"[3/5] Calcolo analisi...")
 
     # Applica filtri se presenti
@@ -119,6 +107,7 @@ def calcola_analisi(df: pd.DataFrame,
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
 
+    dati = {}   # ← inizializzazione obbligatoria
     dati["kpi"] = kpi_portafoglio(df)
 
     if disponibili.get("patrimoniale_asset_class"):
@@ -175,24 +164,28 @@ def calcola_analisi(df: pd.DataFrame,
     # Transaction report
     if df_tx is not None and not df_tx.empty:
         dati["transaction_report"] = df_tx
+
         df_top_op = top_operazioni(df_tx, n=20)
         if df_top_op is not None and not df_top_op.empty:
             dati["top_operazioni"] = df_top_op
             print(f"    → Top operazioni: {len(df_top_op)} righe")
-        # Effetti nominale e prezzo (richiede Inventory N-1)
+
+        # Effetti nominale / prezzo / mercato (analisi Laspeyres)
         res_effetti = analisi_effetti_operazioni(df_tx, df)
         if res_effetti is not None:
             dati["effetti_det"]   = res_effetti["dettaglio"]
             dati["effetti_rie"]   = res_effetti["riepilogo"]
             dati["effetti_check"] = res_effetti["check_ptf"]
-            print(f"    → Check portafoglio: {res_effetti['check_ptf']['Check Portafoglio']:,.0f} (ideale=0)")
+            print(f"    → Check portafoglio effetti: "
+                  f"{res_effetti['check_ptf']['Check Portafoglio']:,.0f} (ideale=0)")
+
+        # Top 20 operazioni per effetto totale (con decomposizione FV)
         if disponibili.get("effetti_tx_top20"):
             df_top20 = analisi_effetti_tx_top20(df_tx, df)
             if df_top20 is not None and not df_top20.empty:
                 dati["effetti_tx_top20"] = df_top20
 
     dati["dettaglio"] = df
-
     print(f"    → Analisi calcolate: {len(dati) - 2}")
     return dati
 
@@ -222,7 +215,7 @@ def genera_output(dati: dict, nome_portafoglio: str,
 
 
 # ---------------------------------------------------------------------------
-# ENTRY POINT alto livello
+# ENTRY POINT
 # ---------------------------------------------------------------------------
 
 def genera_report(path_input: str,
@@ -234,35 +227,39 @@ def genera_report(path_input: str,
 
     print(f"[2/5] Mapping colonne...")
     if tipo == "ship":
-        # Mappa e unisci Inventory N + N-1
-        df_n  = esegui_mapping(df_ptf_n)
-        df_n1 = esegui_mapping(df_ptf_n1)
+        df_n      = esegui_mapping(df_ptf_n)
+        df_n1     = esegui_mapping(df_ptf_n1)
         df_mapped = unisci_ship_patrimoniale(df_n, df_n1)
-        # Mappa e unisci Income N + N-1 → aggiunge _prev alle colonne economiche
+
         df_inc_n, df_inc_n1 = dfs_eco
         df_eco_n  = esegui_mapping(df_inc_n)
         df_eco_n1 = esegui_mapping(df_inc_n1)
         df_eco    = unisci_ship_economico(df_eco_n, df_eco_n1)
-        # Unisci patrimoni ale + economico sul portafoglio
         df_mapped = _merge_ptf_eco(df_mapped, df_eco)
     else:
         df_mapped = esegui_mapping(df_ptf_n)
 
     dati = calcola_analisi(df_mapped, df_tx, filtri)
 
-    # Aggiungi i raw sheet di input per visualizzazione in fondo al report
+    # Raw sheet di input in fondo al report
     if tipo == "ship":
-        # Inventory N + N-1 concatenati con colonna Anno
-        inv_n_raw  = df_ptf_n.copy();  inv_n_raw.insert(0,  "Anno", df_ptf_n.get("Date",  pd.Series(["N"]*len(df_ptf_n))).iloc[0])
-        inv_n1_raw = df_ptf_n1.copy(); inv_n1_raw.insert(0, "Anno", df_ptf_n1.get("Date", pd.Series(["N-1"]*len(df_ptf_n1))).iloc[0])
+        inv_n_raw  = df_ptf_n.copy()
+        inv_n_raw.insert(0, "Anno",
+                         df_ptf_n.get("Date", pd.Series(["N"]*len(df_ptf_n))).iloc[0])
+        inv_n1_raw = df_ptf_n1.copy()
+        inv_n1_raw.insert(0, "Anno",
+                          df_ptf_n1.get("Date", pd.Series(["N-1"]*len(df_ptf_n1))).iloc[0])
         dati["raw_inventory"] = pd.concat([inv_n_raw, inv_n1_raw], ignore_index=True)
-        # Income N + N-1 concatenati
+
         df_inc_n, df_inc_n1 = dfs_eco
-        inc_n_raw  = df_inc_n.copy();  inc_n_raw.insert(0,  "Anno", df_inc_n.get("Date To",  pd.Series(["N"]*len(df_inc_n))).iloc[0])
-        inc_n1_raw = df_inc_n1.copy(); inc_n1_raw.insert(0, "Anno", df_inc_n1.get("Date To", pd.Series(["N-1"]*len(df_inc_n1))).iloc[0])
+        inc_n_raw  = df_inc_n.copy()
+        inc_n_raw.insert(0, "Anno",
+                         df_inc_n.get("Date To", pd.Series(["N"]*len(df_inc_n))).iloc[0])
+        inc_n1_raw = df_inc_n1.copy()
+        inc_n1_raw.insert(0, "Anno",
+                          df_inc_n1.get("Date To", pd.Series(["N-1"]*len(df_inc_n1))).iloc[0])
         dati["raw_income"] = pd.concat([inc_n_raw, inc_n1_raw], ignore_index=True)
     else:
-        # SOFIA: foglio posizioni grezzo
         dati["raw_posizioni"] = df_ptf_n.copy()
 
     return genera_output(dati, nome_portafoglio, output_dir)
@@ -271,14 +268,17 @@ def genera_report(path_input: str,
 def _merge_ptf_eco(df_ptf: pd.DataFrame,
                    df_eco: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggiunge le colonne economiche (cedola, pl_realizzo, pl_valutazione
-    e le rispettive _prev) al patrimoniale SHIP aggregandole per isin.
+    Aggiunge le colonne economiche al patrimoniale SHIP aggregandole per isin.
+    Include cedola, pl, ecl e rispettive _prev.
     """
     eco_cols = [c for c in df_eco.columns
-                if c in ("isin", "cedola", "cedola_prev",
-                         "pl_realizzo", "pl_realizzo_prev",
-                         "pl_valutazione", "pl_valutazione_prev",
-                         "pl_totale_db", "pl_totale_db_prev")]
+                if c in ("isin",
+                         "cedola",          "cedola_prev",
+                         "dividendi",       "dividendi_prev",
+                         "pl_realizzo",     "pl_realizzo_prev",
+                         "pl_valutazione",  "pl_valutazione_prev",
+                         "pl_totale_db",    "pl_totale_db_prev",
+                         "ecl_lc",          "ecl_lc_prev")]
     if "isin" not in df_ptf.columns or "isin" not in df_eco.columns:
         return df_ptf
     df_eco_agg = df_eco[eco_cols].groupby("isin", as_index=False).sum()
@@ -287,16 +287,14 @@ def _merge_ptf_eco(df_ptf: pd.DataFrame,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genera report portafoglio titoli")
-    parser.add_argument("--input",  required=True,         help="Percorso file Excel input")
-    parser.add_argument("--nome",   default="Portafoglio", help="Nome del portafoglio")
-    parser.add_argument("--output", default=OUTPUT_DIR,    help="Cartella output")
+    parser.add_argument("--input",  required=True)
+    parser.add_argument("--nome",   default="Portafoglio")
+    parser.add_argument("--output", default=OUTPUT_DIR)
     args = parser.parse_args()
-
     path_excel, path_word = genera_report(
         path_input=args.input,
         nome_portafoglio=args.nome,
         output_dir=args.output,
     )
-    print(f"\nReport completati:")
-    print(f"   Excel → {path_excel}")
-    print(f"   Word  → {path_word}")
+    print(f"\nExcel → {path_excel}")
+    print(f"Word  → {path_word}")
