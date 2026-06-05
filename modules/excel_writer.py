@@ -227,7 +227,7 @@ def genera_excel(dati: dict,
         rows_kpi = [
             ("Book Value", kpi.get("nav"), kpi.get("nav_prev"), kpi.get("var_nav")),
             ("N° Titoli", kpi.get("n_titoli"), kpi.get("n_titoli_prev"), _var(kpi.get("n_titoli"), kpi.get("n_titoli_prev"))),
-            ("P&L Totale", kpi.get("pl_totale"), kpi.get("pl_totale_prev"), _var(kpi.get("pl_totale"), kpi.get("pl_totale_prev"))),
+            ("P/M Totali", kpi.get("pl_totale"), kpi.get("pl_totale_prev"), _var(kpi.get("pl_totale"), kpi.get("pl_totale_prev"))),
             ("Proventi", kpi.get("proventi"), kpi.get("proventi_prev"), _var(kpi.get("proventi"), kpi.get("proventi_prev"))),
             ("Rendimento %", kpi.get("rendimento_%"), kpi.get("rendimento_%_prev"), _var(kpi.get("rendimento_%"), kpi.get("rendimento_%_prev"))),
         ]
