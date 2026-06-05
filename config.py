@@ -16,17 +16,17 @@ AZURE_OPENAI_API_KEY = "INSERISCI-API-KEY-AZURE"
 AZURE_OPENAI_VERSION = "2024-02-01"
 AZURE_DEPLOYMENT_NAME = "gpt-4o"
 
-# --- Percorsi ---
+# Percorsi
 INPUT_DIR = "input"
 OUTPUT_DIR = "output"
 MAPPING_FILE = "modules/learned_mappings.json"
 
-# --- Report ---
+# Report
 REPORT_LINGUA = "italiano"
 REPORT_VALUTA_SIMBOLO = "€"
 REPORT_VALUTA_FORMATO = '#,##0.00 "€"'
 
-# --- Schema canonico ---
+# Schema canonico
 SCHEMA_CANONICO = {
     "isin": "Codice ISIN",
     "descrizione": "Descrizione titolo",
@@ -79,7 +79,7 @@ SCHEMA_CANONICO = {
     "peso_ptf": "Peso % portafoglio",
 }
 
-# --- Analisi disponibili: nome → colonne richieste ---
+# Analisi disponibili: nome -> colonne richieste
 ANALISI_REQUISITI = {
     "patrimoniale_asset_class": ["book_value", "asset_class"],
     "patrimoniale_fv_level": ["book_value", "asset_class", "fair_value_level"],
@@ -104,7 +104,7 @@ ANALISI_REQUISITI = {
     "effetti_tx_top20": ["fair_value", "asset_class"],
 }
 
-# --- Stile Excel ---
+# Stile Excel
 COLORI = {
     "header_bg": "1F3864",
     "header_fg": "FFFFFF",
@@ -114,7 +114,7 @@ COLORI = {
     "alternato": "EBF0FA",
 }
 
-# --- Valori Valuation Area da mostrare nei filtri ---
+# Valori Valuation Area da mostrare nei filtri
 VALUATION_AREA_VALIDE = [
     "Group IFRS9",
     "Local IFRS9 - IT",
