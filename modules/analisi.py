@@ -19,6 +19,11 @@ def scopri_analisi(df: pd.DataFrame) -> dict:
             risultato[nome] = (
                 "asset_class" in colonne and any(v in colonne for v in voci)
             )
+        elif nome == "effetti_tx_top20":
+            # Disponibile se fair_value e asset_class presenti (il TX viene passato separatamente)
+            risultato[nome] = (
+                "fair_value" in colonne and "asset_class" in colonne
+            )
         elif nome == "oci_per_asset_class":
             # OCI è disponibile solo se la colonna esiste E ha valori non-zero
             # (esclude automaticamente le viste GAAP dove OCI = 0)
@@ -666,6 +671,450 @@ def top_operazioni(df_tx: pd.DataFrame, n: int = 20) -> pd.DataFrame | None:
     return df.rename(columns=etichette)
 
 
+
+# ---------------------------------------------------------------------------
+# ANALISI EFFETTI — INVENTORY (esatta) e TX TOP 20 (attributiva)
+# ---------------------------------------------------------------------------
+
+def analisi_effetti_inventory(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Decomposizione esatta FV_N − FV_N1 per asset class usando i due Inventory.
+
+    Chiave: (valuation_area, company_name, portfolio_name, security_account_group, isin)
+
+    Per ogni riga:
+      P_FV_N1  = fair_value_prev / quantita_prev   (prezzo FV unitario N-1)
+      P_FV_N   = fair_value      / quantita         (prezzo FV unitario N)
+      Eff_Nom  = ΔQ × P_FV_N1                       (variazione esposizione a prezzi N-1)
+      Eff_Mkt  = Q_N × (P_FV_N − P_FV_N1)           (rivalutazione sulla posizione finale)
+      Check:   Eff_Nom + Eff_Mkt = FV_N − FV_N1    ✓ esatto per costruzione
+
+    Aggregato per asset class con totali e check.
+    """
+    if "fair_value" not in df.columns or "quantita" not in df.columns:
+        return pd.DataFrame()
+
+    df = df.copy()
+    has_prev = ("fair_value_prev" in df.columns and "quantita_prev" in df.columns)
+
+    if not has_prev:
+        return pd.DataFrame()
+
+    # Prezzi unitari FV (NaN se quantità = 0)
+    df["_p_fv_n"]  = (df["fair_value"]      / df["quantita"].replace(0, np.nan)).fillna(0)
+    df["_p_fv_n1"] = (df["fair_value_prev"] / df["quantita_prev"].replace(0, np.nan)).fillna(0)
+
+    # Quantità: usa 0 dove NaN (titoli solo in N o solo in N-1)
+    df["_q_n"]  = df["quantita"].fillna(0)
+    df["_q_n1"] = df["quantita_prev"].fillna(0)
+    df["_fv_n"] = df["fair_value"].fillna(0)
+    df["_fv_n1"]= df["fair_value_prev"].fillna(0)
+
+    # Effetti a livello riga
+    df["_delta_q"]   = df["_q_n"] - df["_q_n1"]
+    df["_eff_nom"]   = df["_delta_q"] * df["_p_fv_n1"]
+    df["_eff_mkt"]   = df["_q_n"] * (df["_p_fv_n"] - df["_p_fv_n1"])
+    df["_delta_fv"]  = df["_fv_n"] - df["_fv_n1"]
+
+    # Aggrega per asset class
+    agg = df.groupby("asset_class", dropna=False).agg(
+        fv_n1       = ("_fv_n1",   "sum"),
+        fv_n        = ("_fv_n",    "sum"),
+        eff_nom     = ("_eff_nom", "sum"),
+        eff_mkt     = ("_eff_mkt", "sum"),
+        delta_fv    = ("_delta_fv","sum"),
+    ).reset_index()
+
+    agg = agg.rename(columns={"asset_class": "Asset Class"})
+    agg["Σ Effetti"]      = agg["eff_nom"] + agg["eff_mkt"]
+    agg["Check (Σ−ΔFV)"]  = (agg["Σ Effetti"] - agg["delta_fv"]).round(0)
+
+    agg = agg.rename(columns={
+        "fv_n1":    "FV N-1",
+        "fv_n":     "FV N",
+        "eff_nom":  "Eff. Nominale",
+        "eff_mkt":  "Eff. Mercato",
+        "delta_fv": "ΔFV (N−N1)",
+    })
+    agg = agg.sort_values("FV N", ascending=False)
+
+    # Riga totale
+    tot = agg.select_dtypes("number").sum()
+    tot["Asset Class"]   = "Totale"
+    tot["Check (Σ−ΔFV)"] = round(tot["Σ Effetti"] - tot["ΔFV (N−N1)"], 0)
+    result = pd.concat([agg, pd.DataFrame([tot])], ignore_index=True)
+
+    # Drop colonne interne
+    for col in ["_p_fv_n","_p_fv_n1","_q_n","_q_n1","_fv_n","_fv_n1",
+                "_delta_q","_eff_nom","_eff_mkt","_delta_fv"]:
+        if col in df.columns: df.drop(columns=[col], inplace=True)
+
+    return result[["Asset Class","FV N-1","FV N","ΔFV (N−N1)",
+                   "Eff. Nominale","Eff. Mercato","Σ Effetti","Check (Σ−ΔFV)"]]
+
+
+def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
+                              df_ptf: pd.DataFrame,
+                              n: int = 20) -> pd.DataFrame | None:
+    """
+    Top N operazioni per effetto totale |Eff_Nom + Eff_Mkt| con decomposizione
+    attributiva per singola transazione.
+
+    P_prev per la prima operazione dell'ISIN = P_FV_N1 (fair value unitario N-1)
+    P_prev per operazioni successive          = P_tx dell'operazione precedente
+
+    Eff_Nom_tx = ΔQ × P_prev         (esposizione aggiunta/rimossa a prezzi precedenti)
+    Eff_Mkt_tx = ΔQ × (P_FV_N − P_tx) (rivalutazione di mercato sulle unità dell'op.)
+    """
+    if df_tx is None or df_tx.empty or df_ptf is None or df_ptf.empty:
+        return None
+
+    # ── Prezzi di riferimento da df_ptf ──────────────────────────────────
+    ptf = df_ptf.copy()
+    has_fv_prev = "fair_value_prev" in ptf.columns
+    has_q_prev  = "quantita_prev"   in ptf.columns
+    has_fv_n    = "fair_value"      in ptf.columns
+    has_q_n     = "quantita"        in ptf.columns
+
+    if not (has_fv_n and has_q_n and "isin" in ptf.columns):
+        return None
+
+    agg_cols = {}
+    if has_fv_prev and has_q_prev:
+        agg_cols.update({"fair_value_prev":"sum","quantita_prev":"sum"})
+    if has_fv_n and has_q_n:
+        agg_cols.update({"fair_value":"sum","quantita":"sum"})
+
+    ref = ptf.groupby("isin").agg(agg_cols).reset_index()
+
+    if has_fv_prev and has_q_prev:
+        ref["p_fv_n1"] = (ref["fair_value_prev"] /
+                          ref["quantita_prev"].replace(0,np.nan)).fillna(0)
+    else:
+        ref["p_fv_n1"] = 0.0
+
+    ref["p_fv_n"] = (ref["fair_value"] /
+                     ref["quantita"].replace(0,np.nan)).fillna(0)
+
+    ref_idx = ref.set_index("isin")
+    isins_ptf = set(ref["isin"])
+
+    # ── Prepara TX ────────────────────────────────────────────────────────
+    df = df_tx.copy()
+    df.columns = df.columns.str.strip().str.lower()
+    col_map = {k: v for k, v in _TX_COL_MAP.items() if k in df.columns}
+    # Aggiungi mapping SAG
+    for c in df.columns:
+        if "security account group" in c:
+            col_map[c] = "security_account_group"
+    df = df.rename(columns=col_map)
+
+    if "tipo" not in df.columns or "isin" not in df.columns:
+        return None
+
+    df = df[df["tipo"].str.strip().str.lower().isin({"purchase","sale"}) &
+            df["isin"].isin(isins_ptf)].copy()
+
+    if "data" in df.columns:
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        df = df.sort_values("data").reset_index(drop=True)
+
+    # ── Calcolo effetti rolling ───────────────────────────────────────────
+    stato = {}  # isin → p_prev (ultimo prezzo usato)
+
+    rows = []
+    for _, row in df.iterrows():
+        isin   = row["isin"]
+        tipo   = str(row["tipo"]).lower()
+        nom_tx = float(row.get("nominale", 0) or 0)
+        p_tx   = float(row.get("prezzo",   np.nan) or np.nan)
+
+        # Inizializza con P_FV_N1
+        if isin not in stato:
+            stato[isin] = float(ref_idx.at[isin,"p_fv_n1"])                           if isin in ref_idx.index else np.nan
+
+        p_prev  = stato[isin]
+        p_fv_n  = float(ref_idx.at[isin,"p_fv_n"])                   if isin in ref_idx.index else np.nan
+        delta_q = abs(nom_tx) if tipo=="purchase" else -abs(nom_tx)
+
+        if not (np.isnan(p_tx) or np.isnan(p_prev)):
+            eff_nom = round(delta_q * p_prev, 0)
+            eff_mkt = round(delta_q * (p_fv_n - p_tx), 0)                       if not np.isnan(p_fv_n) else np.nan
+        elif not np.isnan(p_tx):
+            # Posizione nuova (nessun N-1): eff_nom = importo, eff_mkt vs FV
+            eff_nom = round(delta_q * p_tx, 0)
+            eff_mkt = round(delta_q * (p_fv_n - p_tx), 0)                       if not np.isnan(p_fv_n) else np.nan
+        else:
+            eff_nom = np.nan
+            eff_mkt = np.nan
+
+        eff_tot = (eff_nom or 0) + (eff_mkt or 0)                   if not (np.isnan(eff_nom if eff_nom else np.nan)) else np.nan
+
+        rows.append({
+            "Data":             row.get("data",""),
+            "Tipo":             tipo.capitalize(),
+            "ISIN":             isin,
+            "Titolo":           row.get("descrizione",""),
+            "Asset Class":      row.get("asset_class",""),
+            "SAG":              row.get("security_account_group",""),
+            "ΔNominale":        delta_q,
+            "Prezzo Tx":        round(p_tx,4)   if not np.isnan(p_tx)   else np.nan,
+            "Prezzo FV N-1":    round(p_prev,4)  if not np.isnan(p_prev) else np.nan,
+            "Prezzo FV N":      round(p_fv_n,4) if not np.isnan(p_fv_n) else np.nan,
+            "Eff. Nominale":    eff_nom,
+            "Eff. Mercato":     eff_mkt,
+            "Eff. Totale":      round(eff_tot, 0) if eff_tot and not np.isnan(eff_tot) else np.nan,
+            "Importo LC":       row.get("importo_lc", np.nan),
+            "P/L Realizzo LC":  row.get("pl_titolo_lc", np.nan),
+        })
+
+        # Aggiorna p_prev per operazioni successive
+        if not np.isnan(p_tx):
+            stato[isin] = p_tx
+
+    df_all = pd.DataFrame(rows)
+
+    # Top N per |Eff. Totale|
+    df_top = (df_all[df_all["Eff. Totale"].notna()]
+              .assign(_abs=lambda x: x["Eff. Totale"].abs())
+              .sort_values("_abs", ascending=False)
+              .drop(columns=["_abs"])
+              .head(n)
+              .reset_index(drop=True))
+    df_top.index = df_top.index + 1
+    df_top.index.name = "Rank"
+    return df_top
+
+
+def analisi_effetti_operazioni(df_tx: pd.DataFrame,
+                                df_ptf: pd.DataFrame) -> dict | None:
+    """
+    Decomposizione della variazione di portafoglio in 3 effetti.
+
+    Input:
+      df_tx  : Transaction Report (grezzo, tutti i portafogli)
+      df_ptf : DataFrame già filtrato e mappato (output di calcola_analisi)
+               contiene entrambi N e N-1 con chiave composita:
+               (valuation_area, company_name, portfolio_name, isin)
+
+    Chiave: solo ISIN (il TX non ha VA/Company/Portfolio, ma df_ptf è già
+    filtrato dalla VA selezionata nell'app → nessun incrocio tra portafogli).
+    Il TX viene filtrato agli ISIN presenti in df_ptf per isolare la VA corretta.
+
+    Effetto Nominale  = ΔQty × P_rif
+    Effetto Prezzo    = (P_tx − P_rif) × Q_rif
+    Effetto Mercato   = FV_N − Q_N × P_last
+
+    P_rif rolling:
+    - 1ª op ISIN  → P_N1 = BV_N1 / Nom_N1
+    - Purchase    → P_rif aggiornato come media ponderata dopo l'acquisto
+    - Sale        → P_rif invariato (costo storico residuo)
+
+    Check per ISIN:
+      Σ Eff_Nom + Σ Eff_Pre + Eff_Mercato ≈ FV_N − BV_N1
+      (usa FV_N per catturare tutta la variazione di valore comprensiva di mercato)
+
+    Check portafoglio totale:
+      Σ Eff_Mercato + Σ Eff_Prezzo + Σ Eff_Nominale = FV_N_tot − BV_N1_tot
+    """
+    if df_tx is None or df_tx.empty or df_ptf is None or df_ptf.empty:
+        return None
+
+    # ── Estrai prezzi di riferimento da df_ptf (già filtrato per VA) ─────
+    ptf = df_ptf.copy()
+
+    # Colonne necessarie
+    has_bv_prev  = "book_value_prev"  in ptf.columns
+    has_fv       = "fair_value"       in ptf.columns
+    has_nom      = "quantita"         in ptf.columns
+    has_nom_prev = "quantita_prev"    in ptf.columns
+
+    if not ("isin" in ptf.columns and "book_value" in ptf.columns):
+        return None
+
+    # Aggrega per ISIN (somma su VA/Company/Portfolio se più righe)
+    agg_cols = {"book_value": "sum"}
+    if has_bv_prev:  agg_cols["book_value_prev"] = "sum"
+    if has_fv:       agg_cols["fair_value"]       = "sum"
+    if has_nom:      agg_cols["quantita"]         = "sum"
+    if has_nom_prev: agg_cols["quantita_prev"]    = "sum"
+
+    ref = ptf.groupby("isin").agg(agg_cols).reset_index()
+
+    # Prezzi unitari
+    if has_nom_prev and has_bv_prev:
+        ref["p_n1"] = (ref["book_value_prev"] /
+                       ref["quantita_prev"].replace(0, np.nan)).round(6)
+    else:
+        ref["p_n1"] = np.nan
+
+    if has_nom:
+        ref["p_n"] = (ref["book_value"] /
+                      ref["quantita"].replace(0, np.nan)).round(6)
+    else:
+        ref["p_n"] = np.nan
+
+    ref_idx = ref.set_index("isin")
+
+    # ISINs nel portafoglio filtrato
+    isins_ptf = set(ref["isin"])
+
+    # ── Prepara TX e filtra agli ISIN del portafoglio corrente ───────────
+    df = df_tx.copy()
+    df.columns = df.columns.str.strip().str.lower()
+    col_map = {k: v for k, v in _TX_COL_MAP.items() if k in df.columns}
+    df = df.rename(columns=col_map)
+
+    if "tipo" not in df.columns or "isin" not in df.columns:
+        return None
+
+    df = df[df["tipo"].str.strip().str.lower().isin({"purchase","sale"}) &
+            df["isin"].isin(isins_ptf)].copy()
+
+    if "data" in df.columns:
+        df["data"] = pd.to_datetime(df["data"], errors="coerce")
+        df = df.sort_values("data").reset_index(drop=True)
+
+    # ── Calcolo effetti rolling per operazione ───────────────────────────
+    stato = {}  # isin → {p_rif, q_rif}
+
+    det_rows = []
+    for _, row in df.iterrows():
+        isin   = row.get("isin","")
+        tipo   = str(row.get("tipo","")).lower()
+        nom_tx = float(row.get("nominale", 0) or 0)
+        p_tx   = float(row.get("prezzo",   np.nan) or np.nan)
+
+        if isin not in stato:
+            p_ref = float(ref_idx.at[isin,"p_n1"]) if isin in ref_idx.index else np.nan
+            q_ref = float(ref_idx.at[isin,"quantita_prev"])                     if (isin in ref_idx.index and has_nom_prev) else 0.0
+            stato[isin] = {"p_rif": p_ref, "q_rif": q_ref}
+
+        p_rif = stato[isin]["p_rif"]
+        q_rif = stato[isin]["q_rif"]
+
+        if not np.isnan(p_tx):
+            delta_q = abs(nom_tx) if tipo=="purchase" else -abs(nom_tx)
+            if not np.isnan(p_rif):
+                # Posizione esistente in N-1: Laspeyres standard
+                eff_nom = round(delta_q * p_rif, 0)
+                eff_pre = round((p_tx - p_rif) * q_rif, 0)
+            else:
+                # Posizione NUOVA (nessun riferimento N-1):
+                # Eff_Nom = intero importo acquisto (pura variazione quantità)
+                # Eff_Pre = 0 (non c'è prezzo precedente da confrontare)
+                eff_nom = round(abs(nom_tx) * p_tx, 0) if tipo=="purchase" else np.nan
+                eff_pre = 0.0 if tipo=="purchase" else np.nan
+        else:
+            eff_nom = np.nan
+            eff_pre = np.nan
+
+        det_rows.append({
+            "Data":              row.get("data",""),
+            "Tipo":              tipo.capitalize(),
+            "ISIN":              isin,
+            "Titolo":            row.get("descrizione",""),
+            "Asset Class":       row.get("asset_class",""),
+            "ΔNominale":         nom_tx,
+            "Prezzo Tx":         round(p_tx, 4) if not np.isnan(p_tx) else np.nan,
+            "Prezzo Rif.":       round(p_rif,4) if not np.isnan(p_rif) else np.nan,
+            "Effetto Nominale":  eff_nom,
+            "Effetto Prezzo":    eff_pre,
+            "Importo LC":        row.get("importo_lc", np.nan),
+            "P/L Realizzo LC":   row.get("pl_titolo_lc", np.nan),
+        })
+
+        # Aggiorna stato rolling
+        if not np.isnan(p_tx):
+            q_new = q_rif + (abs(nom_tx) if tipo=="purchase" else -abs(nom_tx))
+            if tipo == "purchase":
+                if not np.isnan(p_rif) and q_rif > 0:
+                    # Media ponderata su posizione esistente
+                    p_new = (q_rif * p_rif + abs(nom_tx) * p_tx) / q_new if q_new > 0 else p_tx
+                else:
+                    # Posizione nuova: il prezzo di acquisto diventa il riferimento
+                    p_new = p_tx
+                stato[isin] = {"p_rif": round(p_new,6), "q_rif": max(q_new, 0)}
+            elif tipo == "sale":
+                stato[isin] = {"p_rif": p_rif, "q_rif": max(q_new, 0)}
+
+    df_det = pd.DataFrame(det_rows)
+
+    # ── Riepilogo per ISIN + Effetto Mercato ─────────────────────────────
+    rie_rows = []
+
+    for isin, row_ref in ref_idx.iterrows():
+        bv_n1  = float(row_ref.get("book_value_prev", 0) or 0) if has_bv_prev else 0.0
+        bv_n   = float(row_ref.get("book_value",      0) or 0)
+        fv_n   = float(row_ref.get("fair_value",      np.nan)) if has_fv else np.nan
+        nom_n  = float(row_ref.get("quantita",        0) or 0)  if has_nom else 0.0
+
+        # Totali effetti da transazioni
+        sub    = df_det[df_det["ISIN"]==isin]
+        tot_nom = sub["Effetto Nominale"].sum() if len(sub) else 0.0
+        tot_pre = sub["Effetto Prezzo"].sum()   if len(sub) else 0.0
+
+        # Effetto Mercato: FV_N vs Q_N × P_last
+        p_last  = stato.get(isin,{}).get("p_rif", float(row_ref.get("p_n1", np.nan)))
+        eff_mkt = round(fv_n - nom_n * p_last, 0)                   if (not np.isnan(fv_n) and not np.isnan(p_last) and nom_n > 0) else np.nan
+
+        # Check ISIN: Σ effetti vs FV_N − BV_N1
+        sigma    = (tot_nom or 0) + (tot_pre or 0) + (eff_mkt or 0)
+        delta_fv = (fv_n - bv_n1) if (not np.isnan(fv_n)) else np.nan
+        check    = round(sigma - delta_fv, 0) if not np.isnan(delta_fv) else np.nan
+
+        rie_rows.append({
+            "ISIN":             isin,
+            "BV N-1":           bv_n1,
+            "BV N":             bv_n,
+            "FV N":             fv_n,
+            "Σ Eff. Nominale":  tot_nom,
+            "Σ Eff. Prezzo":    tot_pre,
+            "Effetto Mercato":  eff_mkt,
+            "Σ Totale":         round(sigma, 0),
+            "FV N − BV N-1":    round(delta_fv, 0) if not np.isnan(delta_fv) else np.nan,
+            "Check (Σ − ΔFV)":  check,
+        })
+
+    df_rie = pd.DataFrame(rie_rows)
+
+    # ── Check portafoglio totale ─────────────────────────────────────────
+    tot_bv_n1  = df_rie["BV N-1"].sum()
+    tot_fv_n   = df_rie["FV N"].dropna().sum()
+    tot_eff_nom = df_rie["Σ Eff. Nominale"].sum()
+    tot_eff_pre = df_rie["Σ Eff. Prezzo"].sum()
+    tot_eff_mkt = df_rie["Effetto Mercato"].dropna().sum()
+    tot_sigma   = tot_eff_nom + tot_eff_pre + tot_eff_mkt
+    check_ptf   = round(tot_sigma - (tot_fv_n - tot_bv_n1), 0)
+
+    # RGL titoli venduti: usciti dal portafoglio, non catturati in FV_N
+    # (FV_N = 0 per venduti, ma hanno generato P/L realizzato)
+    rgl_venduti = df_rie[df_rie["FV N"].isna() | (df_rie["FV N"] == 0)]["Σ Eff. Prezzo"].sum()
+    # Cross-term: residuo Laspeyres per ISIN con sia Δqty che Δprezzo
+    cross_term  = round(check_ptf - rgl_venduti, 0)
+
+    check_summary = {
+        "BV N-1 totale":           round(tot_bv_n1, 0),
+        "FV N totale":             round(tot_fv_n, 0),
+        "─── Effetti ───":         "─────────────────────",
+        "Σ Eff. Nominale":         round(tot_eff_nom, 0),
+        "Σ Eff. Prezzo":           round(tot_eff_pre, 0),
+        "Σ Eff. Mercato":          round(tot_eff_mkt, 0),
+        "Σ Totale Effetti":        round(tot_sigma, 0),
+        "─── Riconciliazione ───": "─────────────────────",
+        "FV N − BV N-1":           round(tot_fv_n - tot_bv_n1, 0),
+        "RGL titoli venduti":       round(rgl_venduti, 0),
+        "Cross-term Laspeyres":     cross_term,
+        "Check Portafoglio":        check_ptf,
+    }
+
+    return {
+        "dettaglio":  df_det,
+        "riepilogo":  df_rie,
+        "check_ptf":  check_summary,
+    }
+
+
 # ---------------------------------------------------------------------------
 # 7. FUNZIONI SHIP — unione N / N-1
 # ---------------------------------------------------------------------------
@@ -702,7 +1151,8 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     # Chiave primaria SHIP: Valuation Area + Company + Portfolio + ISIN
     # (ogni titolo può apparire più volte con VA/Company/Portfolio diversi,
     # ma la combinazione è unica per riga — e stabile tra N e N-1)
-    chiavi_ship = ["valuation_area", "company_name", "portfolio_name", "isin"]
+    chiavi_ship = ["valuation_area", "company_name", "portfolio_name",
+                   "security_account_group", "isin"]
     merge_on = [c for c in chiavi_ship
                 if c in df_n.columns and c in df_n1.columns]
     if not merge_on:
@@ -720,7 +1170,8 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     # Colonne anagrafiche (stringa) di N-1 → incluse in _prev per recupero titoli venduti
     COLS_ANA = ["asset_class", "tipo_emittente", "rating", "paese", "valuta",
                 "settore", "descrizione", "valuation_class", "bond_classification",
-                "company_name", "portfolio_name", "scadenza", "data_acquisto"]
+                "company_name", "portfolio_name", "security_account_group",
+                "scadenza", "data_acquisto"]
     cols_anagrafica = [c for c in COLS_ANA
                        if c in df_n1.columns and c not in merge_on]
 
@@ -754,7 +1205,8 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
         df_eco_n, df_eco_n1 = df_eco_n1, df_eco_n
 
     # Stessa chiave del patrimoniale
-    chiavi_ship = ["valuation_area", "company_name", "portfolio_name", "isin"]
+    chiavi_ship = ["valuation_area", "company_name", "portfolio_name",
+                   "security_account_group", "isin"]
     merge_on = [c for c in chiavi_ship
                 if c in df_eco_n.columns and c in df_eco_n1.columns]
     if not merge_on:
@@ -764,7 +1216,7 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
         return df_eco_n
 
     eco_canonici = ["cedola", "dividendi", "pl_realizzo",
-                    "pl_valutazione", "ecl_lc", "pl_totale_db"]
+                    "pl_valutazione", "pl_totale_db"]
     cols_n1 = [c for c in eco_canonici
                if c in df_eco_n1.columns and c not in merge_on]
 
