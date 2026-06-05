@@ -50,7 +50,8 @@ SCHEMA_CANONICO = {
     "valuation_area":    "Valuation Area",
     "company_name":      "Società",
     "portfolio_name":    "Portafoglio",
-    "valuation_class":   "Valuation Class",
+    "valuation_class":       "Valuation Class",
+    "security_account_group": "Security Account Group",
     "bond_classification":"Bond Classification",
     # Economica
     "cedola":            "Interessi/Cedole N",
@@ -99,6 +100,8 @@ ANALISI_REQUISITI = {
     "sensitivity_tassi":             ["book_value", "modified_duration", "asset_class"],
     "oci_per_asset_class":           ["oci_lc", "asset_class"],
     "composizione_valuation_class":  ["book_value", "valuation_class", "asset_class"],
+    "effetti_inventory":              ["fair_value", "fair_value_prev", "quantita", "quantita_prev", "asset_class"],
+    "effetti_tx_top20":              ["fair_value", "asset_class"],
 }
 
 # --- Stile Excel ---
