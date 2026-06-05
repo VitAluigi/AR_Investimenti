@@ -156,7 +156,7 @@ def genera_word(dati: dict, kpi: dict,
     # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "1. Executive Summary", 1)
     kpi_text = json.dumps({
-        "NAV totale":   _fmt(kpi.get("nav")),
+        "Book Value":   _fmt(kpi.get("nav")),
         "Num. titoli":  kpi.get("n_titoli"),
         "P&L totale":   _fmt(kpi.get("pl_totale")),
         "Proventi":     _fmt(kpi.get("proventi")),
