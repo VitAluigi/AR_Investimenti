@@ -6,10 +6,7 @@ import pandas as pd
 import numpy as np
 from config import ANALISI_REQUISITI
 
-# ---------------------------------------------------------------------------
-# 1. CAPABILITY DISCOVERY
-# ---------------------------------------------------------------------------
-
+# 1. Capability Discovery
 def scopri_analisi(df: pd.DataFrame) -> dict:
     colonne = set(df.columns.tolist())
     risultato = {}
