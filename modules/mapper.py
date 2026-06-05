@@ -214,6 +214,10 @@ SINONIMI = {
     "portfolio name":             "portfolio_name",
     "valuation class name":       "valuation_class",
     "bond classification name":   "bond_classification",
+    "security account group name": "security_account_group",
+    "security account group":      "security_account_group",
+    "account group name":          "security_account_group",
+    "seg. account":                "security_account_group",
 }
 
 # ---------------------------------------------------------------------------
