@@ -1,6 +1,4 @@
-# =============================================================================
-# app.py — Interfaccia web Streamlit
-# =============================================================================
+# app.py
 
 import streamlit as st
 import pandas as pd
@@ -14,6 +12,36 @@ from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_e
 
 st.set_page_config(page_title="Report Automatico AR Investimenti", layout="wide")
 
+# ---------------------------------------------------------------------------
+# PASSWORD
+# ---------------------------------------------------------------------------
+def _check_password() -> bool:
+    try:
+        pwd_corretta = st.secrets["APP_PASSWORD"]
+    except Exception:
+        pwd_corretta = "arinvestimenti"
+
+    if st.session_state.get("autenticato"):
+        return True
+
+    _, col, _ = st.columns([1, 2, 1])
+    with col:
+        st.markdown("### Accesso riservato")
+        pwd = st.text_input("Password", type="password", key="_pwd_input")
+        if st.button("Accedi", use_container_width=True):
+            if pwd == pwd_corretta:
+                st.session_state["autenticato"] = True
+                st.rerun()
+            else:
+                st.error("Password errata.")
+    return False
+
+if not _check_password():
+    st.stop()
+
+# ---------------------------------------------------------------------------
+# STILE
+# ---------------------------------------------------------------------------
 st.markdown("""
 <style>
 .stApp { background-color: rgb(0, 51, 141); }
@@ -117,7 +145,7 @@ with st.expander("Dettaglio mapping colonne"):
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
 
 # ---------------------------------------------------------------------------
-# FILTRI (sidebar aggiuntivi, visibili solo se le colonne esistono)
+# FILTRI
 # ---------------------------------------------------------------------------
 filtri = {}
 
@@ -184,9 +212,9 @@ def fmt_perc(v):
     return f"{v:.2f}%" if v is not None else "n.d."
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("NAV Totale", fmt_val(kpi.get("nav")))
+c1.metric("Book Value", fmt_val(kpi.get("nav")))
 c2.metric("N° Titoli", kpi.get("n_titoli", "n.d."))
-c3.metric("P&L Totale", fmt_val(kpi.get("pl_totale")))
+c3.metric("P/M Totali", fmt_val(kpi.get("pl_totale")))
 c4.metric("Proventi", fmt_val(kpi.get("proventi")))
 c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 
@@ -196,9 +224,6 @@ c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 with st.expander("Anteprima dati"):
     st.dataframe(df_mapped.head(20), use_container_width=True)
 
-# ---------------------------------------------------------------------------
-# SEZIONE 5: GENERA
-# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # SEZIONE 5: GENERA
 # ---------------------------------------------------------------------------
