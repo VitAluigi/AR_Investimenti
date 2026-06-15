@@ -33,6 +33,8 @@ def _commento_ai(sezione: str, dati_json: str, kpi: dict) -> str:
     - Inizia direttamente con il commento
     - Massimo 150 parole"""
 
+    # Valutare "non esprimere consigli, sii oggettivo nella descrizione ed effettua benchmark di mercato"
+
     risposta = chiedi_ai(prompt, max_tokens=400)
     if risposta:
         import re
@@ -63,7 +65,6 @@ def _aggiungi_titolo(doc: Document, testo: str, livello: int = 1):
         run.font.color.rgb = RGBColor(0x1F, 0x38, 0x64)
     else:
         run.font.size = Pt(11)
-
 
 def _aggiungi_tabella(doc: Document, df: pd.DataFrame):
     table = doc.add_table(rows=1, cols=len(df.columns))
@@ -110,18 +111,15 @@ def _aggiungi_tabella(doc: Document, df: pd.DataFrame):
 
     doc.add_paragraph()
 
-
 def _ha_dati(dati: dict, chiave: str) -> bool:
     return (chiave in dati
             and dati[chiave] is not None
             and not (isinstance(dati[chiave], pd.DataFrame) and dati[chiave].empty))
 
-
 def _fmt(val, is_perc=False) -> str:
     if val is None:
         return "n.d."
     return f"{val:.2f}%" if is_perc else f"{val:,.2f} €"
-
 
 def genera_word(dati: dict, kpi: dict,
                 nome_portafoglio: str = "Portafoglio Società/Gruppo",
@@ -156,10 +154,10 @@ def genera_word(dati: dict, kpi: dict,
     # ------------------------------------------------------------------ #
     _aggiungi_titolo(doc, "1. Executive Summary", 1)
     kpi_text = json.dumps({
-        "Book Value":   _fmt(kpi.get("nav")),
+        "Book Value": _fmt(kpi.get("nav")),
         "Num. titoli":  kpi.get("n_titoli"),
-        "P&L totale":   _fmt(kpi.get("pl_totale")),
-        "Proventi":     _fmt(kpi.get("proventi")),
+        "P&L totale": _fmt(kpi.get("pl_totale")),
+        "Proventi": _fmt(kpi.get("proventi")),
         "Rendimento %": _fmt(kpi.get("rendimento_%"), is_perc=True),
     }, ensure_ascii=False)
 
@@ -176,17 +174,17 @@ def genera_word(dati: dict, kpi: dict,
     _aggiungi_titolo(doc, "2. Analisi Patrimoniale", 1)
 
     sezioni_pat = [
-        ("patrimoniale_asset_class",     "2.1 Composizione per Asset Class"),
-        ("patrimoniale_fv_level",        "2.2 Distribuzione per Fair Value Level"),
-        ("rating_governativi",           "2.3 Qualità creditizia – Titoli Governativi"),
-        ("rating_non_governativi",       "2.4 Qualità creditizia – Titoli Non Governativi"),
-        ("geografia_governativi",        "2.5 Distribuzione geografica – Governativi"),
-        ("esposizione_valutaria",        "2.6 Esposizione Valutaria"),
-        ("esposizione_settoriale",       "2.7 Esposizione Settoriale"),
-        ("top_holdings",                 "2.8 Principali Holdings"),
-        ("confronto_bv_fv",             "2.9 Book Value vs Fair Value"),
+        ("patrimoniale_asset_class", "2.1 Composizione per Asset Class"),
+        ("patrimoniale_fv_level", "2.2 Distribuzione per Fair Value Level"),
+        ("rating_governativi", "2.3 Qualità creditizia – Titoli Governativi"),
+        ("rating_non_governativi", "2.4 Qualità creditizia – Titoli Non Governativi"),
+        ("geografia_governativi", "2.5 Distribuzione geografica – Governativi"),
+        ("esposizione_valutaria", "2.6 Esposizione Valutaria"),
+        ("esposizione_settoriale", "2.7 Esposizione Settoriale"),
+        ("top_holdings", "2.8 Principali Holdings"),
+        ("confronto_bv_fv", "2.9 Book Value vs Fair Value"),
         ("composizione_valuation_class", "2.10 Composizione per Valuation Class"),
-        ("oci_per_asset_class",         "2.11 OCI per Asset Class (IFRS9)"),
+        ("oci_per_asset_class", "2.11 OCI per Asset Class (IFRS9)"),
     ]
 
     for chiave, titolo_sez in sezioni_pat:
@@ -333,7 +331,6 @@ def genera_word(dati: dict, kpi: dict,
     p_note.runs[0].font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
     return doc
-
 
 def salva_word(doc: Document, path: str):
     doc.save(path)
