@@ -302,7 +302,6 @@ def _match_sinonimo(col: str) -> str | None:
 
     return None
 
-
 def _chiedi_ai_mapping(colonne_sconosciute: list[str]) -> dict:
     schema_keys = list(SCHEMA_CANONICO.keys())
     prompt = f"""Sei un esperto di portafogli finanziari italiani.
@@ -326,15 +325,14 @@ Nessun testo aggiuntivo, nessun markdown, solo JSON puro."""
     except Exception:
         return {col: None for col in colonne_sconosciute}
 
-
 # Colonne da non mappare
 COLONNE_ESCLUSE = {"date", "date from", "date to", "dateto", "datefrom"}
 
 
 def mappa_colonne(raw_columns: list[str]) -> dict:
     mapping_appreso = _carica_mapping_appreso()
-    risultato       = {}
-    da_chiedere_ai  = []
+    risultato = {}
+    da_chiedere_ai = []
 
     for col in raw_columns:
         col_key = col.strip().lower()
@@ -376,8 +374,8 @@ def report_mapping(mapping: dict) -> dict:
     mappate     = {k: v for k, v in mapping.items() if v is not None}
     non_mappate = [k for k, v in mapping.items() if v is None]
     return {
-        "mappate":      mappate,
-        "non_mappate":  non_mappate,
-        "totale":       len(mapping),
+        "mappate": mappate,
+        "non_mappate": non_mappate,
+        "totale": len(mapping),
         "riconosciute": len(mappate),
     }
