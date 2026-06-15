@@ -1,16 +1,16 @@
 import os
 
 # =============================================================================
-# config.py — Impostazioni centrali del sistema
+# config.py - Impostazioni centrali del sistema
 # =============================================================================
 
 AI_PROVIDER = "claude"
 
-# Anthropic Claude (PC personale)
+# Opzione 1 - Anthropic Claude
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 CLAUDE_MODEL = "claude-opus-4-6"
 
-# Azure OpenAI (azienda)
+# Opzione 2 - Azure OpenAI
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
 AZURE_OPENAI_API_KEY = "INSERISCI-API-KEY-AZURE"
 AZURE_OPENAI_VERSION = "2024-02-01"
