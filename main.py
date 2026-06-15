@@ -28,15 +28,15 @@ from config import INPUT_DIR, OUTPUT_DIR
 
 
 # ---------------------------------------------------------------------------
-# STEP 1: Leggi file Excel
+# STEP 1: Lettura file Excel
 # ---------------------------------------------------------------------------
 
 def leggi_portafoglio(path: str):
     print(f"[1/5] Lettura file: {path}")
     try:
-        xls         = pd.ExcelFile(path)
+        xls = pd.ExcelFile(path)
         sheet_names = xls.sheet_names
-        n_sheets    = len(sheet_names)
+        n_sheets = len(sheet_names)
 
         def _leggi(sheet):
             df = pd.read_excel(path, sheet_name=sheet)
@@ -45,55 +45,53 @@ def leggi_portafoglio(path: str):
             return df
 
         if n_sheets == 2:
-            print(f"    → DB SOFIA ({sheet_names})")
+            print(f" -> DB SOFIA ({sheet_names})")
             df_ptf = _leggi(sheet_names[0])
             df_tx  = _leggi(sheet_names[1])
-            print(f"    → Posizioni: {len(df_ptf)} | Transaction: {len(df_tx)} righe")
+            print(f" ->  Posizioni: {len(df_ptf)} | Transaction: {len(df_tx)} righe")
             return "sofia", df_ptf, None, None, df_tx
 
         elif n_sheets == 5:
-            print(f"    → DB SHIP ({sheet_names})")
-            df_inv_n  = _leggi(sheet_names[0])
+            print(f" -> DB SHIP ({sheet_names})")
+            df_inv_n = _leggi(sheet_names[0])
             df_inv_n1 = _leggi(sheet_names[1])
-            df_inc_n  = _leggi(sheet_names[2])
+            df_inc_n = _leggi(sheet_names[2])
             df_inc_n1 = _leggi(sheet_names[3])
-            df_tx     = _leggi(sheet_names[4])
-            print(f"    → Inventory N: {len(df_inv_n)} | Inventory N-1: {len(df_inv_n1)} | "
+            df_tx = _leggi(sheet_names[4])
+            print(f" -> Inventory N: {len(df_inv_n)} | Inventory N-1: {len(df_inv_n1)} | "
                   f"Income N: {len(df_inc_n)} | Income N-1: {len(df_inc_n1)} | "
                   f"Transaction: {len(df_tx)} righe")
             return "ship", df_inv_n, df_inv_n1, (df_inc_n, df_inc_n1), df_tx
 
         else:
-            print(f"    → DB non riconosciuto ({n_sheets} sheet), tratto come SOFIA")
+            print(f" -> DB non riconosciuto ({n_sheets} sheet), tratto come SOFIA")
             df_ptf = _leggi(sheet_names[0])
-            df_tx  = _leggi(sheet_names[-1]) if n_sheets > 1 else None
+            df_tx = _leggi(sheet_names[-1]) if n_sheets > 1 else None
             return "sofia", df_ptf, None, None, df_tx
 
     except Exception as e:
         print(f"[ERRORE] Impossibile leggere il file: {e}")
         sys.exit(1)
 
-
 # ---------------------------------------------------------------------------
 # STEP 2: Mapping colonne
 # ---------------------------------------------------------------------------
 
 def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
-    mapping  = mappa_colonne(df.columns.tolist())
-    info     = report_mapping(mapping)
-    print(f"    → Colonne riconosciute: {info['riconosciute']}/{info['totale']}")
+    mapping = mappa_colonne(df.columns.tolist())
+    info = report_mapping(mapping)
+    print(f" -> Colonne riconosciute: {info['riconosciute']}/{info['totale']}")
     if info["non_mappate"]:
-        print(f"    → Non mappate: {info['non_mappate']}")
+        print(f" -> Non mappate: {info['non_mappate']}")
     df_mapped = applica_mapping(df, mapping)
     return df_mapped.loc[:, ~df_mapped.columns.duplicated()]
-
 
 # ---------------------------------------------------------------------------
 # STEP 3: Calcola analisi
 # ---------------------------------------------------------------------------
 
 def calcola_analisi(df: pd.DataFrame,
-                    df_tx:  pd.DataFrame | None = None,
+                    df_tx: pd.DataFrame | None = None,
                     filtri: dict | None = None) -> dict:
     print(f"[3/5] Calcolo analisi...")
 
@@ -102,12 +100,12 @@ def calcola_analisi(df: pd.DataFrame,
         for col, valori in filtri.items():
             if col in df.columns and valori:
                 df = df[df[col].isin(valori)]
-                print(f"    → Filtro '{col}': {valori} → {len(df)} righe")
+                print(f" -> Filtro '{col}': {valori} → {len(df)} righe")
 
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
 
-    dati = {}   # ← inizializzazione obbligatoria
+    dati = {}
     dati["kpi"] = kpi_portafoglio(df)
 
     if disponibili.get("patrimoniale_asset_class"):
@@ -168,15 +166,15 @@ def calcola_analisi(df: pd.DataFrame,
         df_top_op = top_operazioni(df_tx, n=20)
         if df_top_op is not None and not df_top_op.empty:
             dati["top_operazioni"] = df_top_op
-            print(f"    → Top operazioni: {len(df_top_op)} righe")
+            print(f" -> Top operazioni: {len(df_top_op)} righe")
 
         # Effetti nominale / prezzo / mercato (analisi Laspeyres)
         res_effetti = analisi_effetti_operazioni(df_tx, df)
         if res_effetti is not None:
-            dati["effetti_det"]   = res_effetti["dettaglio"]
-            dati["effetti_rie"]   = res_effetti["riepilogo"]
+            dati["effetti_det"] = res_effetti["dettaglio"]
+            dati["effetti_rie"] = res_effetti["riepilogo"]
             dati["effetti_check"] = res_effetti["check_ptf"]
-            print(f"    → Check portafoglio effetti: "
+            print(f" -> Check portafoglio effetti: "
                   f"{res_effetti['check_ptf']['Check Portafoglio']:,.0f} (ideale=0)")
 
         # Top 20 operazioni per effetto totale (con decomposizione FV)
@@ -186,9 +184,8 @@ def calcola_analisi(df: pd.DataFrame,
                 dati["effetti_tx_top20"] = df_top20
 
     dati["dettaglio"] = df
-    print(f"    → Analisi calcolate: {len(dati) - 2}")
+    print(f" -> Analisi calcolate: {len(dati) - 2}")
     return dati
-
 
 # ---------------------------------------------------------------------------
 # STEP 4 & 5: Genera output
@@ -197,7 +194,7 @@ def calcola_analisi(df: pd.DataFrame,
 def genera_output(dati: dict, nome_portafoglio: str,
                   output_dir: str, unita: str = "€") -> tuple[str, str]:
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    data_str  = datetime.today().strftime("%Y%m%d")
+    data_str = datetime.today().strftime("%Y%m%d")
     nome_safe = nome_portafoglio.replace(" ", "_").replace("/", "-")
 
     print(f"[4/5] Generazione Excel...")
@@ -213,7 +210,6 @@ def genera_output(dati: dict, nome_portafoglio: str,
 
     return path_excel, path_word
 
-
 # ---------------------------------------------------------------------------
 # ENTRY POINT
 # ---------------------------------------------------------------------------
@@ -227,14 +223,14 @@ def genera_report(path_input: str,
 
     print(f"[2/5] Mapping colonne...")
     if tipo == "ship":
-        df_n      = esegui_mapping(df_ptf_n)
-        df_n1     = esegui_mapping(df_ptf_n1)
+        df_n = esegui_mapping(df_ptf_n)
+        df_n1 = esegui_mapping(df_ptf_n1)
         df_mapped = unisci_ship_patrimoniale(df_n, df_n1)
 
         df_inc_n, df_inc_n1 = dfs_eco
         df_eco_n  = esegui_mapping(df_inc_n)
         df_eco_n1 = esegui_mapping(df_inc_n1)
-        df_eco    = unisci_ship_economico(df_eco_n, df_eco_n1)
+        df_eco = unisci_ship_economico(df_eco_n, df_eco_n1)
         df_mapped = _merge_ptf_eco(df_mapped, df_eco)
     else:
         df_mapped = esegui_mapping(df_ptf_n)
@@ -243,7 +239,7 @@ def genera_report(path_input: str,
 
     # Raw sheet di input in fondo al report
     if tipo == "ship":
-        inv_n_raw  = df_ptf_n.copy()
+        inv_n_raw = df_ptf_n.copy()
         inv_n_raw.insert(0, "Anno",
                          df_ptf_n.get("Date", pd.Series(["N"]*len(df_ptf_n))).iloc[0])
         inv_n1_raw = df_ptf_n1.copy()
@@ -252,7 +248,7 @@ def genera_report(path_input: str,
         dati["raw_inventory"] = pd.concat([inv_n_raw, inv_n1_raw], ignore_index=True)
 
         df_inc_n, df_inc_n1 = dfs_eco
-        inc_n_raw  = df_inc_n.copy()
+        inc_n_raw = df_inc_n.copy()
         inc_n_raw.insert(0, "Anno",
                          df_inc_n.get("Date To", pd.Series(["N"]*len(df_inc_n))).iloc[0])
         inc_n1_raw = df_inc_n1.copy()
@@ -267,18 +263,14 @@ def genera_report(path_input: str,
 
 def _merge_ptf_eco(df_ptf: pd.DataFrame,
                    df_eco: pd.DataFrame) -> pd.DataFrame:
-    """
-    Aggiunge le colonne economiche al patrimoniale SHIP aggregandole per isin.
-    Include cedola, pl, ecl e rispettive _prev.
-    """
     eco_cols = [c for c in df_eco.columns
                 if c in ("isin",
-                         "cedola",          "cedola_prev",
-                         "dividendi",       "dividendi_prev",
-                         "pl_realizzo",     "pl_realizzo_prev",
-                         "pl_valutazione",  "pl_valutazione_prev",
-                         "pl_totale_db",    "pl_totale_db_prev",
-                         "ecl_lc",          "ecl_lc_prev")]
+                         "cedola", "cedola_prev",
+                         "dividendi", "dividendi_prev",
+                         "pl_realizzo", "pl_realizzo_prev",
+                         "pl_valutazione", "pl_valutazione_prev",
+                         "pl_totale_db", "pl_totale_db_prev",
+                         "ecl_lc", "ecl_lc_prev")]
     if "isin" not in df_ptf.columns or "isin" not in df_eco.columns:
         return df_ptf
     df_eco_agg = df_eco[eco_cols].groupby("isin", as_index=False).sum()
@@ -287,8 +279,8 @@ def _merge_ptf_eco(df_ptf: pd.DataFrame,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Genera report portafoglio titoli")
-    parser.add_argument("--input",  required=True)
-    parser.add_argument("--nome",   default="Portafoglio")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--nome", default="Portafoglio")
     parser.add_argument("--output", default=OUTPUT_DIR)
     args = parser.parse_args()
     path_excel, path_word = genera_report(
@@ -296,5 +288,5 @@ if __name__ == "__main__":
         nome_portafoglio=args.nome,
         output_dir=args.output,
     )
-    print(f"\nExcel → {path_excel}")
-    print(f"Word  → {path_word}")
+    print(f"\nExcel -> {path_excel}")
+    print(f"Word  -> {path_word}")
