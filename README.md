@@ -1,6 +1,6 @@
 # AR Investimenti
 
-Sistema intelligente per generare report Excel e Word da qualsiasi database grezzo di portafoglio.
+Sistema per generare report Excel e Word da database grezzo di portafoglio.
 
 ---
 
@@ -16,7 +16,7 @@ portafoglio_ai/
    - mapper.py               <- Mapping intelligente colonne
    - analisi.py              <- Codice di calcoli
    - excel_writer.py         <- Generazione Excel
-   - word_writer.py          <- Generazione Word + commenti AI (quando attivato agente)
+   - word_writer.py          <- Generazione Word + commenti AI (quando agente attivo)
    - learned_mappings.json   <- (creato automaticamente, impara nel tempo)
 - input/                     <- Metti qui i file Excel grezzi
 - output/                    <- Report generati
@@ -24,22 +24,22 @@ portafoglio_ai/
 
 ---
 
-## Setup (una tantum)
+## Setup
 
-### 1. Installa le librerie
+### 1. Installare le librerie
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configura Azure OpenAI quando disponibile
-Apri `config.py` e compila:
+### 2. Configurare Azure OpenAI quando disponibile
+Aprire `config.py` e compilare:
 ```python
 AZURE_OPENAI_ENDPOINT = "https://NOME-AZIENDA.openai.azure.com/"
 AZURE_OPENAI_API_KEY  = "la-tua-api-key"
 AZURE_DEPLOYMENT_NAME = "gpt-4o"
 ```
 
-> Il sistema funziona anche SENZA Azure OpenAI configurato.
+> Il sistema funziona anche senza Azure OpenAI configurato.
 > In quel caso usa solo il dizionario di sinonimi per il mapping
 > e genera i report senza i commenti narrativi AI.
 
@@ -55,7 +55,7 @@ Apri il browser su http://localhost:8501 se in locale
 
 ### Da riga di comando
 ```bash
-python main.py --input input/portafoglio.xlsx --nome "Fondo Alpha"
+python main.py --input input/portafoglio.xlsx -- nome "Fondo Alpha"
 ```
 
 ### Da codice Python
@@ -109,7 +109,7 @@ Apri `modules/mapper.py` e aggiungi nel dizionario `SINONIMI`:
 
 # Esecuzione
 
-# Comandida terminale
+# Comandi da terminale
 cd "/Users/vittorioaluigi/Desktop/Progetti 2026/portafoglio_ai" #**da pc**
 cd "C:\Users\valuigi\OneDrive - KPMG\Audit and Assurance - Area 1 - AXA Assicurazioni SpA\Documenti\0_Permanent\AXAgpt\AR Investimenti\portafoglio_ai\portafoglio_ai" #**da aziendale**
 pip install -r requirements.txt
