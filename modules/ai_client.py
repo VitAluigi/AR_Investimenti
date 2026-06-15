@@ -2,7 +2,6 @@
 # modules/ai_client.py - Client AI unificato (Claude o Azure)
 # =============================================================================
 # Unico punto in cui cambia il provider. mapper.py e word_writer.py
-# chiamano sempre chiedi_ai().
 # =============================================================================
 
 import re
@@ -22,7 +21,6 @@ def _chiedi_claude(prompt: str, max_tokens: int) -> str:
     try:
         import anthropic
         from config import CLAUDE_MODEL
-        # Prova prima st.secrets (Streamlit Cloud), poi os.environ (locale)
         try:
             import streamlit as st
             api_key = st.secrets["CLAUDE_API_KEY"]
