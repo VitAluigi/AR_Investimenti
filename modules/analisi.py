@@ -32,7 +32,7 @@ def scopri_analisi(df: pd.DataFrame) -> dict:
     return risultato
 
 def report_analisi(disponibili: dict) -> str:
-    attive   = [n for n, v in disponibili.items() if v]
+    attive = [n for n, v in disponibili.items() if v]
     inattive = [n for n, v in disponibili.items() if not v]
     lines = [f"Analisi disponibili ({len(attive)}/{len(disponibili)}):"]
     for a in attive: lines.append(f" OK {a}")
@@ -123,7 +123,7 @@ def patrimoniale_fv_level(df: pd.DataFrame) -> pd.DataFrame:
         result = pd.concat([pivot_n, _pivot("book_value_prev", "N-1")], axis=1)
 
     result["Totale N"] = pivot_n.sum(axis=1)
-    result.index.name  = "Asset Class"
+    result.index.name = "Asset Class"
     result = result.reset_index()
     tot = result.select_dtypes("number").sum()
     tot["Asset Class"] = "Totale"
@@ -260,11 +260,6 @@ def esposizione_settoriale(df: pd.DataFrame) -> pd.DataFrame:
     return _build_confronto(df, "settore", "book_value", "book_value_prev")
 
 def oci_per_asset_class(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Analisi Riserva OCI per asset class.
-    Fonte: colonna oci_lc dall'Inventory.
-    OCI N, OCI N-1 e variazione per asset class.
-    """
     result = _build_confronto(df, "asset_class", "oci_lc", "oci_lc_prev")
 
     # OCI w/o Recycling se disponibile
@@ -279,9 +274,6 @@ def oci_per_asset_class(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 def composizione_valuation_class(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Pivot asset_class * valuation_class -> Book Value N.
-    """
     if "valuation_class" not in df.columns or "asset_class" not in df.columns:
         return pd.DataFrame()
 
@@ -313,7 +305,6 @@ def composizione_valuation_class(df: pd.DataFrame) -> pd.DataFrame:
 def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
     """
     Distribuzione del Book Value per bucket di scadenza.
-    Considera solo i titoli con scadenza valorizzata (esclusione di Azioni, Fondi ecc.).
     Bucket: 0-1, 1-3, 3-5, 5-10, 10-20, 20-30, >30 anni.
     """
     BUCKET_ORDER = ["0-1 anni", "1-3 anni", "3-5 anni",
@@ -434,7 +425,7 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     Stress test tasso di interesse con approssimazione di Taylor al 2° ordine.
 
     Formula:
-        Delta_P = BV * (−D_mod × Delta_y + ½ * C * Delta_y^2)
+        Delta_P = BV * (−D_mod * Delta_y + ½ * C * Delta_y^2)
 
     dove Delta_y è lo shift parallelo della curva dei tassi.
     D_mod e C sono pesati per Book Value per asset class.
@@ -465,17 +456,17 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     # Duration e Convexity ponderate per asset class
     agg = df_filt.groupby("asset_class", dropna=False).apply(
         lambda g: pd.Series({
-            "BV":       g["book_value"].sum(),
-            "D_pond":   (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
-            "C_pond":   (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
+            "BV": g["book_value"].sum(),
+            "D_pond": (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
+            "C_pond": (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
         })
     ).reset_index()
 
     # Totale portafoglio
-    tot_bv   = df_filt["book_value"].sum()
+    tot_bv = df_filt["book_value"].sum()
     tot_dpond = (df_filt["book_value"] * df_filt["modified_duration"]).sum() / tot_bv
     tot_cpond = (df_filt["book_value"] * df_filt["_conv"]).sum() / tot_bv
-    tot_row  = pd.DataFrame([{
+    tot_row = pd.DataFrame([{
         "asset_class": "Totale",
         "BV": tot_bv,
         "D_pond": tot_dpond,
@@ -485,19 +476,19 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
 
     # Calcola Delta_P per ogni shift
     for lbl, dy in zip(SHIFT_LBLS, SHIFTS_DY):
-        agg[f"Delta_P {lbl} (€)"] = (
+        agg[f"Delta P {lbl} (€)"] = (
             agg["BV"] * (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2)
         ).round(2)
-        agg[f"Delta_P {lbl} (%)"] = (
+        agg[f"Delta P {lbl} (%)"] = (
             (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2) * 100
         ).round(4)
 
     # Rinomina colonne espositive
     agg = agg.rename(columns={
         "asset_class": "Asset Class",
-        "BV":          "Book Value",
-        "D_pond":      "Dur. Pond.",
-        "C_pond":      "Conv. Pond.",
+        "BV": "Book Value",
+        "D_pond": "Dur. Pond.",
+        "C_pond": "Conv. Pond.",
     })
 
     # Arrotonda duration e convexity
@@ -634,8 +625,8 @@ def analisi_effetti_inventory(df: pd.DataFrame) -> pd.DataFrame:
     Per ogni riga:
       P_FV_N1 = fair_value_prev / quantita_prev (prezzo FV unitario N-1)
       P_FV_N = fair_value / quantita (prezzo FV unitario N)
-      Eff_Nom = Delta_Q × P_FV_N1 (variazione esposizione a prezzi N-1)
-      Eff_Mkt = Q_N × (P_FV_N − P_FV_N1) (rivalutazione sulla posizione finale)
+      Eff_Nom = Delta_Q * P_FV_N1 (variazione esposizione a prezzi N-1)
+      Eff_Mkt = Q_N * (P_FV_N − P_FV_N1) (rivalutazione sulla posizione finale)
       Check: Eff_Nom + Eff_Mkt = FV_N − FV_N1
 
     Aggregato per asset class con totali e check.
@@ -701,7 +692,6 @@ def analisi_effetti_inventory(df: pd.DataFrame) -> pd.DataFrame:
     return result[["Asset Class","FV N-1","FV N","Delta FV (N−N1)",
                    "Eff. Nominale","Eff. Mercato","Somma Effetti","Check (Somma−Delta FV)"]]
 
-
 def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
                               df_ptf: pd.DataFrame,
                               n: int = 20) -> pd.DataFrame | None:
@@ -712,8 +702,8 @@ def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
     P_prev per la prima operazione dell'ISIN = P_FV_N1 (fair value unitario N-1)
     P_prev per operazioni successive = P_tx dell'operazione precedente
 
-    Eff_Nom_tx = Delta Q × P_prev (esposizione aggiunta/rimossa a prezzi precedenti)
-    Eff_Mkt_tx = Delta Q × (P_FV_N − P_tx) (rivalutazione di mercato sulle unità dell'op.)
+    Eff_Nom_tx = Delta Q * P_prev (esposizione aggiunta/rimossa a prezzi precedenti)
+    Eff_Mkt_tx = Delta Q * (P_FV_N − P_tx) (rivalutazione di mercato sulle unità dell'op.)
     """
     if df_tx is None or df_tx.empty or df_ptf is None or df_ptf.empty:
         return None
@@ -807,8 +797,8 @@ def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
             "Asset Class": row.get("asset_class",""),
             "SAG": row.get("security_account_group",""),
             "ΔNominale": delta_q,
-            "Prezzo Tx": round(p_tx,4)   if not np.isnan(p_tx)   else np.nan,
-            "Prezzo FV N-1": round(p_prev,4)  if not np.isnan(p_prev) else np.nan,
+            "Prezzo Tx": round(p_tx,4) if not np.isnan(p_tx)   else np.nan,
+            "Prezzo FV N-1": round(p_prev,4) if not np.isnan(p_prev) else np.nan,
             "Prezzo FV N": round(p_fv_n,4) if not np.isnan(p_fv_n) else np.nan,
             "Eff. Nominale": eff_nom,
             "Eff. Mercato": eff_mkt,
@@ -849,9 +839,9 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
     filtrato dalla VA selezionata nell'app -> nessun incrocio tra portafogli).
     Il TX viene filtrato agli ISIN presenti in df_ptf per isolare la VA corretta.
 
-    Effetto Nominale = Delta Q × P_rif
-    Effetto Prezzo = (P_tx − P_rif) × Q_rif
-    Effetto Mercato = FV_N − Q_N × P_last
+    Effetto Nominale = Delta Q * P_rif
+    Effetto Prezzo = (P_tx − P_rif) * Q_rif
+    Effetto Mercato = FV_N − Q_N * P_last
 
     P_rif rolling:
     - 1ª op ISIN -> P_N1 = BV_N1 / Nom_N1
@@ -981,10 +971,8 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
             q_new = q_rif + (abs(nom_tx) if tipo=="purchase" else -abs(nom_tx))
             if tipo == "purchase":
                 if not np.isnan(p_rif) and q_rif > 0:
-                    # Media ponderata su posizione esistente
                     p_new = (q_rif * p_rif + abs(nom_tx) * p_tx) / q_new if q_new > 0 else p_tx
                 else:
-                    # Posizione nuova: il prezzo di acquisto diventa il riferimento
                     p_new = p_tx
                 stato[isin] = {"p_rif": round(p_new,6), "q_rif": max(q_new, 0)}
             elif tipo == "sale":
@@ -1009,7 +997,7 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         tot_nom = sub["Effetto Nominale"].sum() if len(sub) else 0.0
         tot_pre = sub["Effetto Prezzo"].sum() if len(sub) else 0.0
 
-        # Effetto Mercato: FV_N vs Q_N × P_last
+        # Effetto Mercato: FV_N vs Q_N * P_last
         p_last  = stato.get(isin,{}).get("p_rif", float(row_ref.get("p_n1", np.nan)))
         eff_mkt = round(fv_n - nom_n * p_last, 0) if (not np.isnan(fv_n) and not np.isnan(p_last) and nom_n > 0) else np.nan
 
