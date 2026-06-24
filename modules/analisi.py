@@ -456,19 +456,19 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     # Duration e Convexity ponderate per asset class
     agg = df_filt.groupby("asset_class", dropna=False).apply(
         lambda g: pd.Series({
-            "BV": g["book_value"].sum(),
-            "D_pond": (g["book_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
-            "C_pond": (g["book_value"] * g["_conv"]).sum() / g["book_value"].sum(),
+            "BV": g["fair_value"].sum(),
+            "D_pond": (g["fair_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
+            "C_pond": (g["fair_value"] * g["_conv"]).sum() / g["book_value"].sum(),
         })
     ).reset_index()
 
     # Totale portafoglio
-    tot_bv = df_filt["book_value"].sum()
+    tot_fv = df_filt["fair_value"].sum()
     tot_dpond = (df_filt["book_value"] * df_filt["modified_duration"]).sum() / tot_bv
     tot_cpond = (df_filt["book_value"] * df_filt["_conv"]).sum() / tot_bv
     tot_row = pd.DataFrame([{
         "asset_class": "Totale",
-        "BV": tot_bv,
+        "FV": tot_fv,
         "D_pond": tot_dpond,
         "C_pond": tot_cpond,
     }])
