@@ -146,49 +146,102 @@ with st.expander("Dettaglio mapping colonne"):
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
 
 # ---------------------------------------------------------------------------
-# SEZIONE 1b: MAPPING MANUALE COLONNE NON RICONOSCIUTE
+# SEZIONE 1b: MAPPATURA COLONNE (modifica riconosciute + assegna non riconosciute)
 # ---------------------------------------------------------------------------
 
 CAMPI = campi_canonici()
 NESSUNO = "— Non mappare —"
 
-# Colonne ancora "grezze": presenti in df_mapped ma non corrispondono a un campo canonico
-col_da_mappare = [c for c in df_mapped.columns if c not in CAMPI]
+# Reverse del mapping rilevato: campo_canonico -> nome colonna originale.
+# Serve per de-mappare correttamente (riportare al nome originale) e per la
+# persistenza in learned_mappings.json. Best-effort: per il DB SHIP copre le
+# colonne dell'Inventory N (non quelle economiche unite dall'Income).
+canonico_to_orig = {can: orig for orig, can in mapping.items() if can}
 
-if col_da_mappare:
-    with st.expander(f"Mappa manualmente le colonne non riconosciute ({len(col_da_mappare)})",
-                     expanded=True):
-        st.caption("Assegna un campo canonico alle colonne non riconosciute. "
-                   "Le scelte vengono memorizzate e riusate nei prossimi caricamenti.")
+opzioni = [NESSUNO] + list(CAMPI.keys())
 
-        opzioni = [NESSUNO] + list(CAMPI.keys())
-        overrides = {}
-        for col in col_da_mappare:
-            scelta = st.selectbox(
-                f"«{col}»",
-                options=opzioni,
-                index=0,
-                key=f"map_manuale_{col}",
-                format_func=lambda v: v if v == NESSUNO else f"{CAMPI[v]}  ({v})",
+def _fmt_opt(v):
+    return v if v == NESSUNO else f"{CAMPI[v]}  ({v})"
+
+with st.expander("Mappatura colonne (modifica le riconosciute o assegna le mancanti)",
+                 expanded=False):
+    st.caption("Puoi cambiare il campo canonico di qualsiasi colonna, anche di quelle "
+               "già riconosciute (utile se il riconoscimento automatico ha sbagliato). "
+               "Le scelte vengono memorizzate e riusate nei prossimi caricamenti.")
+
+    proposte = []  # (col_attuale, nome_originale, target_canonico | None=de-map)
+
+    for col in list(df_mapped.columns):
+        is_canonica = col in CAMPI
+        if is_canonica:
+            etichetta = f"«{CAMPI[col]}»  —  riconosciuta"
+            default = col
+        else:
+            etichetta = f"«{col}»  —  NON riconosciuta"
+            default = NESSUNO
+
+        idx = opzioni.index(default) if default in opzioni else 0
+        scelta = st.selectbox(
+            etichetta,
+            options=opzioni,
+            index=idx,
+            key=f"map_edit_{col}",
+            format_func=_fmt_opt,
+        )
+
+        nome_originale = canonico_to_orig.get(col, col) if is_canonica else col
+
+        if scelta == NESSUNO:
+            # De-mappa: se era canonica e conosco il nome originale, lo ripristino
+            if is_canonica and nome_originale != col:
+                proposte.append((col, nome_originale, None))
+            continue
+
+        if scelta == col:
+            continue  # invariata
+
+        proposte.append((col, nome_originale, scelta))
+
+    if proposte:
+        # Costruisci le rinomine (target = canonico scelto, oppure nome originale se de-map)
+        rinomine = {}
+        for col, orig, tgt_can in proposte:
+            rinomine[col] = tgt_can if tgt_can is not None else orig
+
+        # Gestione collisioni: il target non deve già esistere tra le colonne
+        # NON rinominate, né essere scelto da più colonne contemporaneamente.
+        colonne_invariate = [c for c in df_mapped.columns if c not in rinomine]
+        target_count = {}
+        for tgt in rinomine.values():
+            target_count[tgt] = target_count.get(tgt, 0) + 1
+
+        collisioni = {
+            src: tgt for src, tgt in rinomine.items()
+            if tgt in colonne_invariate or target_count[tgt] > 1
+        }
+        if collisioni:
+            st.warning(
+                "Queste riassegnazioni creano un conflitto (campo già presente o "
+                "scelto più volte) e verranno ignorate: "
+                + ", ".join(f"{s} → {CAMPI.get(t, t)}" for s, t in collisioni.items())
             )
-            if scelta != NESSUNO:
-                overrides[col] = scelta
+            rinomine = {s: t for s, t in rinomine.items() if s not in collisioni}
 
-        if overrides:
-            # Avvisa se il campo scelto è già presente (collisione → il rename verrebbe deduplicato)
-            collisioni = {c: v for c, v in overrides.items() if v in df_mapped.columns}
-            if collisioni:
-                st.warning("Questi campi sono già presenti e verrebbero ignorati: "
-                           + ", ".join(f"{c} → {v}" for c, v in collisioni.items()))
-            overrides = {c: v for c, v in overrides.items() if v not in collisioni}
-
-            df_mapped = df_mapped.rename(columns=overrides)
+        if rinomine:
+            df_mapped = df_mapped.rename(columns=rinomine)
             df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
-            for col, can in overrides.items():
-                salva_mapping_manuale(col, can)
-            if overrides:
-                st.success("Mapping applicato: "
-                           + ", ".join(f"{c} → {CAMPI[v]}" for c, v in overrides.items()))
+
+            # Persisti solo le riassegnazioni verso un canonico effettivamente
+            # applicate, e solo quando l'originale non è già un nome canonico
+            # (evita di sporcare learned_mappings con voci canonico→canonico).
+            for col, orig, tgt_can in proposte:
+                if col in rinomine and tgt_can is not None and orig not in CAMPI:
+                    salva_mapping_manuale(orig, tgt_can)
+
+            st.success(
+                "Mappatura aggiornata: "
+                + ", ".join(f"{s} → {CAMPI.get(t, t)}" for s, t in rinomine.items())
+            )
 
 # ---------------------------------------------------------------------------
 # FILTRI
