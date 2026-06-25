@@ -9,6 +9,7 @@ from modules.mapper  import mappa_colonne, applica_mapping, report_mapping
 from modules.analisi import (scopri_analisi, kpi_portafoglio,
                               unisci_ship_patrimoniale, unisci_ship_economico)
 from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco
+from modules.mapper import campi_canonici, salva_mapping_manuale
 
 st.set_page_config(page_title="Report Automatico AR Investimenti", layout="wide")
 
@@ -143,6 +144,51 @@ with st.expander("Dettaglio mapping colonne"):
         for k, v in mapping.items()
     ]
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
+
+# ---------------------------------------------------------------------------
+# SEZIONE 1b: MAPPING MANUALE COLONNE NON RICONOSCIUTE
+# ---------------------------------------------------------------------------
+
+CAMPI = campi_canonici()
+NESSUNO = "— Non mappare —"
+
+# Colonne ancora "grezze": presenti in df_mapped ma non corrispondono a un campo canonico
+col_da_mappare = [c for c in df_mapped.columns if c not in CAMPI]
+
+if col_da_mappare:
+    with st.expander(f"Mappa manualmente le colonne non riconosciute ({len(col_da_mappare)})",
+                     expanded=True):
+        st.caption("Assegna un campo canonico alle colonne non riconosciute. "
+                   "Le scelte vengono memorizzate e riusate nei prossimi caricamenti.")
+
+        opzioni = [NESSUNO] + list(CAMPI.keys())
+        overrides = {}
+        for col in col_da_mappare:
+            scelta = st.selectbox(
+                f"«{col}»",
+                options=opzioni,
+                index=0,
+                key=f"map_manuale_{col}",
+                format_func=lambda v: v if v == NESSUNO else f"{CAMPI[v]}  ({v})",
+            )
+            if scelta != NESSUNO:
+                overrides[col] = scelta
+
+        if overrides:
+            # Avvisa se il campo scelto è già presente (collisione → il rename verrebbe deduplicato)
+            collisioni = {c: v for c, v in overrides.items() if v in df_mapped.columns}
+            if collisioni:
+                st.warning("Questi campi sono già presenti e verrebbero ignorati: "
+                           + ", ".join(f"{c} → {v}" for c, v in collisioni.items()))
+            overrides = {c: v for c, v in overrides.items() if v not in collisioni}
+
+            df_mapped = df_mapped.rename(columns=overrides)
+            df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
+            for col, can in overrides.items():
+                salva_mapping_manuale(col, can)
+            if overrides:
+                st.success("Mapping applicato: "
+                           + ", ".join(f"{c} → {CAMPI[v]}" for c, v in overrides.items()))
 
 # ---------------------------------------------------------------------------
 # FILTRI
