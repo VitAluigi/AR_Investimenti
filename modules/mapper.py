@@ -407,3 +407,8 @@ def salva_mapping_manuale(col: str, canonico: str):
     mapping = _carica_mapping_appreso()
     mapping[col.strip().lower()] = canonico
     _salva_mapping_appreso(mapping)
+    if canonico:
+        return
+    mapping = _carica_mapping_appreso()
+    mapping[col.strip().lower()] = canonico
+    _salva_mapping_appreso(mapping)
