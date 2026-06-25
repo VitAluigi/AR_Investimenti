@@ -379,3 +379,31 @@ def report_mapping(mapping: dict) -> dict:
         "totale": len(mapping),
         "riconosciute": len(mappate),
     }
+
+def campi_canonici() -> dict:
+    """Ritorna {campo_canonico: etichetta} per i menu a tendina, inclusi gli N-1."""
+    campi = dict(SCHEMA_CANONICO)
+    campi.update({
+        "book_value_prev": "Book Value N-1",
+        "fair_value_prev": "Fair Value N-1",
+        "quantita_prev": "Quantità N-1",
+        "fair_value_level_prev": "Fair Value Level N-1",
+        "cedola_prev": "Interessi/Cedole N-1",
+        "dividendi_prev": "Dividendi N-1",
+        "pl_realizzo_prev": "PL Realizzo N-1",
+        "pl_valutazione_prev": "PL Valutazione N-1",
+        "pl_totale_db_prev": "PL Totale N-1",
+        "oci_lc_prev": "OCI LC N-1",
+        "ecl_lc_prev": "ECL LC N-1",
+        "modified_duration_prev": "Modified Duration N-1",
+    })
+    return campi
+
+
+def salva_mapping_manuale(col: str, canonico: str):
+    """Memorizza una scelta manuale così da riconoscerla in automatico la prossima volta."""
+    if not canonico:
+        return
+    mapping = _carica_mapping_appreso()
+    mapping[col.strip().lower()] = canonico
+    _salva_mapping_appreso(mapping)
