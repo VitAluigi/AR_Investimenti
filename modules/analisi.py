@@ -425,10 +425,11 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     Stress test tasso di interesse con approssimazione di Taylor al 2° ordine.
 
     Formula:
-        Delta_P = BV * (−D_mod * Delta_y + ½ * C * Delta_y^2)
+        Delta_P = FV * (−D_mod * Delta_y + ½ * C * Delta_y^2)
 
-    dove Delta_y è lo shift parallelo della curva dei tassi.
-    D_mod e C sono pesati per Book Value per asset class.
+    Base di calcolo: FAIR VALUE (valore di mercato).
+    D_mod e C sono pesati per Fair Value per asset class.
+    Fallback su Book Value solo se il Fair Value non è valorizzato.
 
     Shift testati: −200bp, −100bp, −50bp, +50bp, +100bp, +200bp
     """
@@ -436,11 +437,16 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     SHIFTS_DY  = [s / 10000 for s in SHIFTS_BP]
     SHIFT_LBLS = [f"{'+' if s>0 else ''}{s}bp" for s in SHIFTS_BP]
 
-    # Filtra solo titoli con duration e book_value valorizzati
     df = df.copy()
-    mask = df["modified_duration"].notna() & df["book_value"].notna()
-    df_filt = df[mask].copy()
 
+    # Base = Fair Value; fallback su Book Value se FV assente/vuoto
+    base_col = ("fair_value"
+                if "fair_value" in df.columns and df["fair_value"].notna().any()
+                else "book_value")
+    base_label = "Fair Value" if base_col == "fair_value" else "Book Value"
+
+    mask = df["modified_duration"].notna() & df[base_col].notna()
+    df_filt = df[mask].copy()
     if df_filt.empty:
         return pd.DataFrame()
 
@@ -453,47 +459,50 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
         df_filt["_conv"] = (df_filt["modified_duration"]**2 +
                             df_filt["modified_duration"])
 
-    # Duration e Convexity ponderate per asset class
+    # Duration e Convexity ponderate per Fair Value, per asset class
     agg = df_filt.groupby("asset_class", dropna=False).apply(
         lambda g: pd.Series({
-            "BV": g["fair_value"].sum(),
-            "D_pond": (g["fair_value"] * g["modified_duration"]).sum() / g["book_value"].sum(),
-            "C_pond": (g["fair_value"] * g["_conv"]).sum() / g["book_value"].sum(),
+            "Base": g[base_col].sum(),
+            "D_pond": (g[base_col] * g["modified_duration"]).sum() / g[base_col].sum()
+                      if g[base_col].sum() else 0.0,
+            "C_pond": (g[base_col] * g["_conv"]).sum() / g[base_col].sum()
+                      if g[base_col].sum() else 0.0,
         })
     ).reset_index()
 
-    # Totale portafoglio
-    tot_fv = df_filt["fair_value"].sum()
-    tot_dpond = (df_filt["book_value"] * df_filt["modified_duration"]).sum() / tot_bv
-    tot_cpond = (df_filt["book_value"] * df_filt["_conv"]).sum() / tot_bv
+    # Totale portafoglio (pesato per Fair Value)
+    tot_base  = df_filt[base_col].sum()
+    tot_dpond = (df_filt[base_col] * df_filt["modified_duration"]).sum() / tot_base if tot_base else 0.0
+    tot_cpond = (df_filt[base_col] * df_filt["_conv"]).sum() / tot_base if tot_base else 0.0
     tot_row = pd.DataFrame([{
         "asset_class": "Totale",
-        "FV": tot_fv,
+        "Base": tot_base,
         "D_pond": tot_dpond,
         "C_pond": tot_cpond,
     }])
     agg = pd.concat([agg, tot_row], ignore_index=True)
 
-    # Calcola Delta_P per ogni shift
+    # Calcola Delta_P per ogni shift (sul Fair Value)
     for lbl, dy in zip(SHIFT_LBLS, SHIFTS_DY):
         agg[f"Delta P {lbl} (€)"] = (
-            agg["BV"] * (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2)
+            agg["Base"] * (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2)
         ).round(2)
         agg[f"Delta P {lbl} (%)"] = (
             (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2) * 100
         ).round(4)
 
-    # Rinomina colonne espositive
+    # Rinomina espositiva — la base è esplicitata nell'intestazione
     agg = agg.rename(columns={
         "asset_class": "Asset Class",
-        "BV": "Book Value",
-        "D_pond": "Dur. Pond.",
-        "C_pond": "Conv. Pond.",
+        "Base": base_label,          # -> "Fair Value" (o "Book Value" in fallback)
+        "D_pond": "Dur. Pond. (su FV)" if base_col == "fair_value" else "Dur. Pond. (su BV)",
+        "C_pond": "Conv. Pond. (su FV)" if base_col == "fair_value" else "Conv. Pond. (su BV)",
     })
 
-    # Arrotonda duration e convexity
-    agg["Dur. Pond."]  = agg["Dur. Pond."].round(3)
-    agg["Conv. Pond."] = agg["Conv. Pond."].round(3)
+    dur_col  = "Dur. Pond. (su FV)"  if base_col == "fair_value" else "Dur. Pond. (su BV)"
+    conv_col = "Conv. Pond. (su FV)" if base_col == "fair_value" else "Conv. Pond. (su BV)"
+    agg[dur_col]  = agg[dur_col].round(3)
+    agg[conv_col] = agg[conv_col].round(3)
 
     return agg
 
