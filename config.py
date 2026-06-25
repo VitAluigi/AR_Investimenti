@@ -97,7 +97,7 @@ ANALISI_REQUISITI = {
     "confronto_bv_fv": ["book_value", "fair_value", "asset_class"],
     "scadenze_bucket": ["book_value", "scadenza"],
     "duration_ponderata": ["book_value", "modified_duration", "asset_class"],
-    "sensitivity_tassi": ["book_value", "modified_duration", "asset_class"],
+    "sensitivity_tassi": ["fair_value", "modified_duration", "asset_class"],
     "oci_per_asset_class": ["oci_lc", "asset_class"],
     "composizione_valuation_class": ["book_value", "valuation_class", "asset_class"],
     "effetti_inventory": ["fair_value", "fair_value_prev", "quantita", "quantita_prev", "asset_class"],
