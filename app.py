@@ -1,4 +1,6 @@
+# ==========================================================================
 # app.py
+# ==========================================================================
 
 import streamlit as st
 import pandas as pd
@@ -146,16 +148,12 @@ with st.expander("Dettaglio mapping colonne"):
     st.dataframe(pd.DataFrame(mapping_display), use_container_width=True, hide_index=True)
 
 # ---------------------------------------------------------------------------
-# SEZIONE 1b: MAPPATURA COLONNE (modifica riconosciute + assegna non riconosciute)
+# SEZIONE 1b: MAPPATURA COLONNE
 # ---------------------------------------------------------------------------
 
 CAMPI = campi_canonici()
 NESSUNO = "— Non mappare —"
 
-# Reverse del mapping rilevato: campo_canonico -> nome colonna originale.
-# Serve per de-mappare correttamente (riportare al nome originale) e per la
-# persistenza in learned_mappings.json. Best-effort: per il DB SHIP copre le
-# colonne dell'Inventory N (non quelle economiche unite dall'Income).
 canonico_to_orig = {can: orig for orig, can in mapping.items() if can}
 
 opzioni = [NESSUNO] + list(CAMPI.keys())
@@ -166,18 +164,18 @@ def _fmt_opt(v):
 with st.expander("Mappatura colonne (modifica le riconosciute o assegna le mancanti)",
                  expanded=False):
     st.caption("Puoi cambiare il campo canonico di qualsiasi colonna, anche di quelle "
-               "già riconosciute (utile se il riconoscimento automatico ha sbagliato). "
+               "già riconosciute. "
                "Le scelte vengono memorizzate e riusate nei prossimi caricamenti.")
 
-    proposte = []  # (col_attuale, nome_originale, target_canonico | None=de-map)
+    proposte = []
 
     for col in list(df_mapped.columns):
         is_canonica = col in CAMPI
         if is_canonica:
-            etichetta = f"«{CAMPI[col]}»  —  riconosciuta"
+            etichetta = f"«{CAMPI[col]}»  -  riconosciuta"
             default = col
         else:
-            etichetta = f"«{col}»  —  NON riconosciuta"
+            etichetta = f"«{col}»  -  NON riconosciuta"
             default = NESSUNO
 
         idx = opzioni.index(default) if default in opzioni else 0
@@ -192,24 +190,20 @@ with st.expander("Mappatura colonne (modifica le riconosciute o assegna le manca
         nome_originale = canonico_to_orig.get(col, col) if is_canonica else col
 
         if scelta == NESSUNO:
-            # De-mappa: se era canonica e conosco il nome originale, lo ripristino
             if is_canonica and nome_originale != col:
                 proposte.append((col, nome_originale, None))
             continue
 
         if scelta == col:
-            continue  # invariata
+            continue
 
         proposte.append((col, nome_originale, scelta))
 
     if proposte:
-        # Costruisci le rinomine (target = canonico scelto, oppure nome originale se de-map)
         rinomine = {}
         for col, orig, tgt_can in proposte:
             rinomine[col] = tgt_can if tgt_can is not None else orig
 
-        # Gestione collisioni: il target non deve già esistere tra le colonne
-        # NON rinominate, né essere scelto da più colonne contemporaneamente.
         colonne_invariate = [c for c in df_mapped.columns if c not in rinomine]
         target_count = {}
         for tgt in rinomine.values():
@@ -231,9 +225,6 @@ with st.expander("Mappatura colonne (modifica le riconosciute o assegna le manca
             df_mapped = df_mapped.rename(columns=rinomine)
             df_mapped = df_mapped.loc[:, ~df_mapped.columns.duplicated()]
 
-            # Persisti solo le riassegnazioni verso un canonico effettivamente
-            # applicate, e solo quando l'originale non è già un nome canonico
-            # (evita di sporcare learned_mappings con voci canonico→canonico).
             for col, orig, tgt_can in proposte:
                 if col in rinomine and tgt_can is not None and orig not in CAMPI:
                     salva_mapping_manuale(orig, tgt_can)
@@ -299,9 +290,9 @@ n_attive = sum(1 for v in disponibili.values() if v)
 st.caption(f"**{n_attive}/{len(disponibili)}** analisi disponibili con i dati forniti.")
 
 if df_tx is not None and not df_tx.empty:
-    st.success("Transaction Report rilevato — verrà generato lo sheet Top 20 Operazioni.")
+    st.success("Transaction Report rilevato - sheet Top 20 Operazioni disponibile.")
 else:
-    st.info("Nessun Transaction Report — sheet Top 20 Operazioni non disponibile.")
+    st.info("Nessun Transaction Report - sheet Top 20 Operazioni non disponibile.")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 3: KPI
