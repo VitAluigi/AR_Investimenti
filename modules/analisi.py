@@ -38,28 +38,12 @@ def _flag_partecipazioni(df: pd.DataFrame) -> pd.Series:
     return flag
 
 def _etichetta_tipo_partecipazione(df: pd.DataFrame) -> pd.Series:
-    """
-    Etichetta leggibile del tipo di partecipazione per riga:
-    - SOFIA: valore originale di tipo_dettaglio (Altre partecipazioni,
-      Partecipazioni controllate, Partecipazioni collegate)
-    - SHIP: codice SII MICA Account (A16_PARTICIP), valido su N o N-1
-    """
-    etichetta = pd.Series("n.d.", index=df.index)
+    etichetta = pd.Series("", index=df.index)
 
     if "tipo_dettaglio" in df.columns:
         mask_sofia = (df["tipo_dettaglio"].astype(str).str.strip().str.lower()
                       .isin(VALORI_PARTECIPAZIONE_SOFIA))
         etichetta.loc[mask_sofia] = df.loc[mask_sofia, "tipo_dettaglio"].astype(str).str.strip()
-
-    if "sii_mica_account" in df.columns:
-        mask_ship = (df["sii_mica_account"].astype(str).str.strip()
-                     == CODICE_PARTECIPAZIONE_SHIP)
-        etichetta.loc[mask_ship] = f"Partecipazione ({CODICE_PARTECIPAZIONE_SHIP})"
-
-    if "sii_mica_account_prev" in df.columns:
-        mask_ship_prev = (df["sii_mica_account_prev"].astype(str).str.strip()
-                          == CODICE_PARTECIPAZIONE_SHIP)
-        etichetta.loc[mask_ship_prev & (etichetta == "n.d.")] = f"Partecipazione ({CODICE_PARTECIPAZIONE_SHIP})"
 
     return etichetta
 
