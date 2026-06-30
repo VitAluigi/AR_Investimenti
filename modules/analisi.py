@@ -324,35 +324,47 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
       Partecipazioni collegate}
     - SHIP: sii_mica_account (N o N-1) == 'A16_PARTICIP'
 
-    Mostra ISIN, Descrizione, Asset Class, Book Value N/N-1, Fair Value N/N-1.
+    Mostra ISIN, Descrizione, Asset Class, Book Value N/N-1 (+ Variazione BV),
+    Fair Value N/N-1 (+ Variazione FV).
     """
     flag = _flag_partecipazioni(df)
     sub = df[flag].copy()
     if sub.empty:
         return pd.DataFrame()
 
-    cols, rename = [], {}
-    for c, lbl in [("isin", "ISIN"), ("descrizione", "Descrizione"),
-                   ("asset_class", "Asset Class")]:
-        if c in sub.columns:
-            cols.append(c)
-            rename[c] = lbl
+    result = pd.DataFrame(index=sub.index)
 
-    for c, lbl in [("book_value", "Book Value N"),
-                   ("book_value_prev", "Book Value N-1"),
-                   ("fair_value", "Fair Value N"),
-                   ("fair_value_prev", "Fair Value N-1")]:
-        if c in sub.columns:
-            cols.append(c)
-            rename[c] = lbl
+    if "isin" in sub.columns:
+        result["ISIN"] = sub["isin"]
+    if "descrizione" in sub.columns:
+        result["Descrizione"] = sub["descrizione"]
+    if "asset_class" in sub.columns:
+        result["Asset Class"] = sub["asset_class"]
 
-    result = sub[cols].rename(columns=rename)
+    has_bv = "book_value" in sub.columns
+    has_bv_prev = "book_value_prev" in sub.columns
+    if has_bv:
+        result["Book Value N"] = sub["book_value"]
+    if has_bv_prev:
+        result["Book Value N-1"] = sub["book_value_prev"]
+    if has_bv and has_bv_prev:
+        result["Variazione BV"] = (result["Book Value N"] - result["Book Value N-1"]).round(2)
+
+    has_fv = "fair_value" in sub.columns
+    has_fv_prev = "fair_value_prev" in sub.columns
+    if has_fv:
+        result["Fair Value N"] = sub["fair_value"]
+    if has_fv_prev:
+        result["Fair Value N-1"] = sub["fair_value_prev"]
+    if has_fv and has_fv_prev:
+        result["Variazione FV"] = (result["Fair Value N"] - result["Fair Value N-1"]).round(2)
 
     sort_col = "Book Value N" if "Book Value N" in result.columns else result.columns[0]
     result = result.sort_values(sort_col, ascending=False, na_position="last")
 
-    num_cols = [c for c in ["Book Value N", "Book Value N-1",
-                             "Fair Value N", "Fair Value N-1"] if c in result.columns]
+    num_cols = [c for c in ["Book Value N", "Book Value N-1", "Variazione BV",
+                             "Fair Value N", "Fair Value N-1", "Variazione FV"]
+                if c in result.columns]
     label_col = "Descrizione" if "Descrizione" in result.columns else result.columns[0]
 
     tot = result[num_cols].sum()
