@@ -1,7 +1,5 @@
 # =============================================================================
-# modules/ai_client.py - Client AI unificato (Claude o Azure)
-# =============================================================================
-# Unico punto in cui cambia il provider. mapper.py e word_writer.py
+# modules/ai_client.py
 # =============================================================================
 
 import re
