@@ -306,7 +306,7 @@ else:
 # ---------------------------------------------------------------------------
 # SEZIONE 3: KPI
 # ---------------------------------------------------------------------------
-kpi = kpi_portafoglio(df_mapped)
+kpi = kpi_portafoglio(df_filtered)
 st.subheader("KPI Portafoglio")
 
 def fmt_val(v):
