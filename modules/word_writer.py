@@ -185,6 +185,7 @@ def genera_word(dati: dict, kpi: dict,
         ("confronto_bv_fv", "2.9 Book Value vs Fair Value"),
         ("composizione_valuation_class", "2.10 Composizione per Valuation Class"),
         ("oci_per_asset_class", "2.11 OCI per Asset Class (IFRS9)"),
+        ("partecipazioni", "2.12 Partecipazioni (controllate, collegate, altre)"),
     ]
 
     for chiave, titolo_sez in sezioni_pat:
