@@ -214,6 +214,12 @@ SINONIMI = {
     "security account group name": "security_account_group",
     "account group name": "security_account_group",
     "seg. account": "security_account_group",
+
+    # ---- PARTECIPAZIONI ----
+    # SOFIA: colonna "Tipo" (dettaglio classificazione, distinta da asset_class)
+    "tipo": "tipo_dettaglio",
+    # SHIP: colonna "SII MICA Account" (codice A16_PARTICIP = partecipazione)
+    "sii mica account": "sii_mica_account",
 }
 
 # ---------------------------------------------------------------------------
