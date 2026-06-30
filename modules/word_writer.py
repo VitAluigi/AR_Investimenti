@@ -79,7 +79,8 @@ def _aggiungi_tabella(doc: Document, df: pd.DataFrame):
 
     for row_tuple in df.itertuples(index=False):
         row_cells = table.add_row().cells
-        is_totale = str(row_tuple[0]).strip().lower() == "totale"
+        is_totale = any(str(v).strip().lower() == "totale" for v in row_tuple)
+        
         for i, val in enumerate(row_tuple):
             col_name = str(df.columns[i]).lower()
             is_perc  = "%" in col_name or "peso" in col_name
