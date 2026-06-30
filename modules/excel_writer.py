@@ -340,6 +340,8 @@ def genera_excel(dati: dict,
             "valuation_class": "Valuation Class",
             "bond_classification": "Bond Classification",
             "security_account_group": "Security Account Group",
+            "tipo_dettaglio": "Tipo (dettaglio SOFIA)",
+            "sii_mica_account": "SII MICA Account",
         }
         df_det = dati["dettaglio"].rename(columns=ETICHETTE)
         n_det = len(df_det.columns)
