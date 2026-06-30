@@ -269,12 +269,17 @@ with st.sidebar:
         sel_pf = st.multiselect("Portafoglio", options=opzioni_pf, default=opzioni_pf)
         if sel_pf and set(sel_pf) != set(opzioni_pf):
             filtri["portfolio_name"] = sel_pf
+          
+df_filtered = applica_filtri(df_mapped, filtri)
+
+if len(df_filtered) < len(df_mapped):
+    st.caption(f"Filtri attivi: {len(df_filtered)}/{len(df_mapped)} righe selezionate.")
 
 # ---------------------------------------------------------------------------
 # SEZIONE 2: ANALISI DISPONIBILI
 # ---------------------------------------------------------------------------
 st.subheader("Analisi disponibili")
-disponibili = scopri_analisi(df_mapped)
+disponibili = scopri_analisi(df_filtered)
 
 cols = st.columns(3)
 for i, (nome, attiva) in enumerate(disponibili.items()):
