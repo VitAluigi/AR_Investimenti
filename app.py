@@ -326,7 +326,7 @@ c5.metric("Rendimento %", fmt_perc(kpi.get("rendimento_%")))
 # SEZIONE 4: ANTEPRIMA
 # ---------------------------------------------------------------------------
 with st.expander("Anteprima dati"):
-    st.dataframe(df_mapped.head(20), use_container_width=True)
+    st.dataframe(df_filtered.head(20), use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # SEZIONE 5: GENERA
