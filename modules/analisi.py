@@ -6,6 +6,37 @@ import pandas as pd
 import numpy as np
 from config import ANALISI_REQUISITI
 
+VALORI_PARTECIPAZIONE_SOFIA = {
+    "altre partecipazioni",
+    "partecipazioni controllate",
+    "partecipazioni collegate",
+}
+CODICE_PARTECIPAZIONE_SHIP = "A16_PARTICIP"
+
+
+def _flag_partecipazioni(df: pd.DataFrame) -> pd.Series:
+    """
+    True per le righe classificate come partecipazione, indipendentemente
+    dalla fonte (SOFIA: colonna 'tipo_dettaglio' / SHIP: 'sii_mica_account').
+    Per SHIP controlla sia il valore N che N-1 per intercettare anche i
+    titoli comprati o venduti durante l'anno.
+    """
+    flag = pd.Series(False, index=df.index)
+
+    if "tipo_dettaglio" in df.columns:
+        flag |= (df["tipo_dettaglio"].astype(str).str.strip().str.lower()
+                  .isin(VALORI_PARTECIPAZIONE_SOFIA))
+
+    if "sii_mica_account" in df.columns:
+        flag |= (df["sii_mica_account"].astype(str).str.strip()
+                  == CODICE_PARTECIPAZIONE_SHIP)
+
+    if "sii_mica_account_prev" in df.columns:
+        flag |= (df["sii_mica_account_prev"].astype(str).str.strip()
+                  == CODICE_PARTECIPAZIONE_SHIP)
+
+    return flag
+
 # 1. Capability Discovery
 def scopri_analisi(df: pd.DataFrame) -> dict:
     colonne = set(df.columns.tolist())
@@ -26,6 +57,15 @@ def scopri_analisi(df: pd.DataFrame) -> dict:
                 "asset_class" in colonne and
                 df["oci_lc"].notna().any() and
                 df["oci_lc"].abs().sum() > 0
+            )
+        elif nome == "partecipazioni":
+            has_flag_cols = ("tipo_dettaglio" in colonne or
+                              "sii_mica_account" in colonne or
+                              "sii_mica_account_prev" in colonne)
+            risultato[nome] = (
+                "book_value" in colonne and
+                has_flag_cols and
+                _flag_partecipazioni(df).any()
             )
         else:
             risultato[nome] = all(r in colonne for r in requisiti)
@@ -276,6 +316,48 @@ def oci_per_asset_class(df: pd.DataFrame) -> pd.DataFrame:
 def composizione_valuation_class(df: pd.DataFrame) -> pd.DataFrame:
     if "valuation_class" not in df.columns or "asset_class" not in df.columns:
         return pd.DataFrame()
+
+def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Elenco delle security classificate come partecipazioni:
+    - SOFIA: tipo_dettaglio in {Altre partecipazioni, Partecipazioni controllate,
+      Partecipazioni collegate}
+    - SHIP: sii_mica_account (N o N-1) == 'A16_PARTICIP'
+
+    Mostra ISIN, Descrizione, Asset Class, Book Value N/N-1, Fair Value N/N-1.
+    """
+    flag = _flag_partecipazioni(df)
+    sub = df[flag].copy()
+    if sub.empty:
+        return pd.DataFrame()
+
+    cols, rename = [], {}
+    for c, lbl in [("isin", "ISIN"), ("descrizione", "Descrizione"),
+                   ("asset_class", "Asset Class")]:
+        if c in sub.columns:
+            cols.append(c)
+            rename[c] = lbl
+
+    for c, lbl in [("book_value", "Book Value N"),
+                   ("book_value_prev", "Book Value N-1"),
+                   ("fair_value", "Fair Value N"),
+                   ("fair_value_prev", "Fair Value N-1")]:
+        if c in sub.columns:
+            cols.append(c)
+            rename[c] = lbl
+
+    result = sub[cols].rename(columns=rename)
+
+    sort_col = "Book Value N" if "Book Value N" in result.columns else result.columns[0]
+    result = result.sort_values(sort_col, ascending=False, na_position="last")
+
+    num_cols = [c for c in ["Book Value N", "Book Value N-1",
+                             "Fair Value N", "Fair Value N-1"] if c in result.columns]
+    label_col = "Descrizione" if "Descrizione" in result.columns else result.columns[0]
+
+    tot = result[num_cols].sum()
+    tot[label_col] = "Totale"
+    return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
     # Pivot: righe = asset_class, colonne = valuation_class
     pivot = df.pivot_table(
@@ -1122,8 +1204,10 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                 "scadenza", "data_acquisto"]
     cols_anagrafica = [c for c in COLS_ANA
                        if c in df_n1.columns and c not in merge_on]
+    cols_extra = [c for c in ["sii_mica_account"]
+                  if c in df_n1.columns and c not in merge_on]
 
-    cols_da_prev = cols_numeriche + cols_anagrafica
+    cols_da_prev = cols_numeriche + cols_anagrafica + cols_extra
     df_prev = df_n1[merge_on + cols_da_prev].copy()
     df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_da_prev})
 
