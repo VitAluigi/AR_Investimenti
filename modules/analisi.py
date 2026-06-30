@@ -15,12 +15,6 @@ CODICE_PARTECIPAZIONE_SHIP = "A16_PARTICIP"
 
 
 def _flag_partecipazioni(df: pd.DataFrame) -> pd.Series:
-    """
-    True per le righe classificate come partecipazione, indipendentemente
-    dalla fonte (SOFIA: colonna 'tipo_dettaglio' / SHIP: 'sii_mica_account').
-    Per SHIP controlla sia il valore N che N-1 per intercettare anche i
-    titoli comprati o venduti durante l'anno.
-    """
     flag = pd.Series(False, index=df.index)
 
     if "tipo_dettaglio" in df.columns:
@@ -251,7 +245,7 @@ def economica_completa(df: pd.DataFrame) -> pd.DataFrame:
     result = df.groupby("asset_class", dropna=False).agg(**{**agg_n, **agg_p}).reset_index()
     result = result.rename(columns={"asset_class": "Asset Class"})
 
-    cols_n  = [l for l, _ in voci if l in result.columns]
+    cols_n = [l for l, _ in voci if l in result.columns]
     cols_n1 = [l for l, _ in voci_prev if l in result.columns]
 
     if "PL Totale N" in result.columns:
@@ -328,16 +322,6 @@ def composizione_valuation_class(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
 def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Elenco delle security classificate come partecipazioni:
-    - SOFIA: tipo_dettaglio in {Altre partecipazioni, Partecipazioni controllate,
-      Partecipazioni collegate}
-    - SHIP: sii_mica_account (N o N-1) == 'A16_PARTICIP'
-
-    Mostra ISIN, Descrizione, Asset Class, Tipo Partecipazione,
-    Book Value N/N-1 (+ Variazione BV), Fair Value N/N-1 (+ Variazione FV).
-    Ordinata per Tipo Partecipazione e, all'interno, per Book Value decrescente.
-    """
     flag = _flag_partecipazioni(df)
     sub = df[flag].copy()
     if sub.empty:
@@ -389,8 +373,6 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
     tot["Tipo Partecipazione"] = ""
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
 
-
-    # Pivot: righe = asset_class, colonne = valuation_class
     pivot = df.pivot_table(
         index="asset_class",
         columns="valuation_class",
@@ -401,15 +383,12 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
     pivot.index.name = "Asset Class"
     pivot.columns.name = None
 
-    # Colonna totale
     pivot["Totale"] = pivot.sum(axis=1)
 
-    # Riga totale
     tot = pivot.sum(axis=0)
     tot.name = "Totale"
     pivot = pd.concat([pivot, tot.to_frame().T])
 
-    # Peso % su totale portafoglio
     tot_ptf = pivot.loc["Totale", "Totale"]
     pivot["Peso %"] = (pivot["Totale"] / tot_ptf * 100).round(2) if tot_ptf else 0
 
@@ -467,7 +446,6 @@ def scadenze_bucket(df: pd.DataFrame) -> pd.DataFrame:
         agg["N-1"] = agg["Variazione"] = agg["Var %"] = None
         tot_n1 = None
 
-    # Ordina per bucket logico
     order_map = {b: i for i, b in enumerate(BUCKET_ORDER)}
     agg["_ord"] = agg["Bucket"].map(lambda x: order_map.get(x, 99))
     agg = agg.sort_values("_ord").drop(columns=["_ord"])
@@ -563,7 +541,7 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     if df_filt.empty:
         return pd.DataFrame()
 
-    # Convexity: se disponibile, altrimenti stima D^2 + D (appross. bond bullet)
+    # Convexity
     if "convexity" in df_filt.columns and df_filt["convexity"].notna().any():
         df_filt["_conv"] = df_filt["convexity"].fillna(
             df_filt["modified_duration"]**2 + df_filt["modified_duration"]
@@ -583,7 +561,6 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
         })
     ).reset_index()
 
-    # Totale portafoglio (pesato per Fair Value)
     tot_base  = df_filt[base_col].sum()
     tot_dpond = (df_filt[base_col] * df_filt["modified_duration"]).sum() / tot_base if tot_base else 0.0
     tot_cpond = (df_filt[base_col] * df_filt["_conv"]).sum() / tot_base if tot_base else 0.0
@@ -595,7 +572,6 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
     }])
     agg = pd.concat([agg, tot_row], ignore_index=True)
 
-    # Calcola Delta_P per ogni shift (sul Fair Value)
     for lbl, dy in zip(SHIFT_LBLS, SHIFTS_DY):
         agg[f"Delta P {lbl} (€)"] = (
             agg["Base"] * (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2)
@@ -604,7 +580,6 @@ def sensitivity_tassi(df: pd.DataFrame) -> pd.DataFrame:
             (-agg["D_pond"] * dy + 0.5 * agg["C_pond"] * dy**2) * 100
         ).round(4)
 
-    # Rinomina espositiva — la base è esplicitata nell'intestazione
     agg = agg.rename(columns={
         "asset_class": "Asset Class",
         "Base": base_label,          # -> "Fair Value" (o "Book Value" in fallback)
@@ -864,7 +839,6 @@ def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
     df = df_tx.copy()
     df.columns = df.columns.str.strip().str.lower()
     col_map = {k: v for k, v in _TX_COL_MAP.items() if k in df.columns}
-    # Aggiungi mapping SAG
     for c in df.columns:
         if "security account group" in c:
             col_map[c] = "security_account_group"
@@ -881,7 +855,7 @@ def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
         df = df.sort_values("data").reset_index(drop=True)
 
     # Calcolo effetti rolling
-    stato = {}  # isin -> p_prev (ultimo prezzo usato)
+    stato = {}
 
     rows = []
     for _, row in df.iterrows():
@@ -929,7 +903,6 @@ def analisi_effetti_tx_top20(df_tx: pd.DataFrame,
             "P/L Realizzo LC": row.get("pl_titolo_lc", np.nan),
         })
 
-        # Aggiorna p_prev per operazioni successive
         if not np.isnan(p_tx):
             stato[isin] = p_tx
 
@@ -979,7 +952,6 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
     if df_tx is None or df_tx.empty or df_ptf is None or df_ptf.empty:
         return None
 
-    # ── Estrai prezzi di riferimento da df_ptf (già filtrato per VA) ─────
     ptf = df_ptf.copy()
 
     # Colonne necessarie
@@ -991,7 +963,6 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
     if not ("isin" in ptf.columns and "book_value" in ptf.columns):
         return None
 
-    # Aggrega per ISIN (somma su VA/Company/Portfolio se più righe)
     has_fv_prev = "fair_value_prev" in ptf.columns
     agg_cols = {"book_value": "sum"}
     if has_bv_prev: agg_cols["book_value_prev"] = "sum"
@@ -1040,7 +1011,7 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         df = df.sort_values("data").reset_index(drop=True)
 
     # Calcolo effetti rolling per operazione
-    stato = {}  # isin -> {p_rif, q_rif}
+    stato = {}
 
     det_rows = []
     for _, row in df.iterrows():
@@ -1060,13 +1031,9 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         if not np.isnan(p_tx):
             delta_q = abs(nom_tx) if tipo=="purchase" else -abs(nom_tx)
             if not np.isnan(p_rif):
-                # Posizione esistente in N-1: Laspeyres standard
                 eff_nom = round(delta_q * p_rif, 0)
                 eff_pre = round((p_tx - p_rif) * q_rif, 0)
             else:
-                # Posizione nuova (nessun riferimento N-1):
-                # Eff_Nom = intero importo acquisto (pura variazione quantità)
-                # Eff_Pre = 0 (non c'è prezzo precedente da confrontare)
                 eff_nom = round(abs(nom_tx) * p_tx, 0) if tipo=="purchase" else np.nan
                 eff_pre = 0.0 if tipo=="purchase" else np.nan
         else:
@@ -1123,7 +1090,7 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
         p_last  = stato.get(isin,{}).get("p_rif", float(row_ref.get("p_n1", np.nan)))
         eff_mkt = round(fv_n - nom_n * p_last, 0) if (not np.isnan(fv_n) and not np.isnan(p_last) and nom_n > 0) else np.nan
 
-        # Check ISIN: Somma effetti vs FV_N − FV_N1
+        # Check ISIN: Somma effetti vs FV_N - FV_N1
         sigma = (tot_nom or 0) + (tot_pre or 0) + (eff_mkt or 0)
         delta_fv = (fv_n - fv_n1) if (not np.isnan(fv_n)) else np.nan
         check = round(sigma - delta_fv, 0) if not np.isnan(delta_fv) else np.nan
@@ -1144,7 +1111,7 @@ def analisi_effetti_operazioni(df_tx: pd.DataFrame,
 
     df_rie = pd.DataFrame(rie_rows)
 
-    # Check portafoglio totale (base: FV_N − FV_N1)
+    # Check portafoglio totale (base: FV_N - FV_N1)
     tot_fv_n1 = df_rie["FV N-1"].sum()  if "FV N-1" in df_rie.columns else df_rie["BV N-1"].sum()
     tot_bv_n1 = df_rie["BV N-1"].sum()
     tot_fv_n = df_rie["FV N"].dropna().sum()
@@ -1192,11 +1159,6 @@ def _data_sheet(df: pd.DataFrame, col_data: str) -> pd.Timestamp | None:
 def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                               df_n1: pd.DataFrame) -> pd.DataFrame:
     """
-    Unione dei due Inventory SHIP (N e N-1) con outer join su isin.
-    Nel DB SHIP ogni ISIN appare una sola volta per sheet, ma la
-    Valuation Area e Valuation Class possono cambiare tra N e N-1
-    per lo stesso titolo - quindi la chiave è solo isin.
-
     Casistiche gestite:
     - Titoli in entrambi gli anni: book_value e book_value_prev valorizzati
     - Titoli solo in N (acquistati): book_value_prev = NaN
@@ -1209,9 +1171,6 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     if data_a and data_b and data_b > data_a:
         df_n, df_n1 = df_n1, df_n
 
-    # Chiave primaria SHIP: Valuation Area + Company + Portfolio + ISIN
-    # (ogni titolo può apparire più volte con VA/Company/Portfolio diversi,
-    # ma la combinazione è unica per riga e stabile tra N e N-1)
     chiavi_ship = ["valuation_area", "company_name", "portfolio_name",
                    "security_account_group", "isin"]
     merge_on = [c for c in chiavi_ship
@@ -1228,7 +1187,7 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
                       and c in df_n.columns
                       and c not in merge_on]
 
-    # Colonne anagrafiche (stringa) di N-1 → incluse in _prev per recupero titoli venduti
+    # Colonne anagrafiche (stringa) di N-1 -> incluse in _prev per recupero titoli venduti
     COLS_ANA = ["asset_class", "tipo_emittente", "rating", "paese", "valuta",
                 "settore", "descrizione", "valuation_class", "bond_classification",
                 "company_name", "portfolio_name", "security_account_group",
@@ -1242,7 +1201,6 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
     df_prev = df_n1[merge_on + cols_da_prev].copy()
     df_prev = df_prev.rename(columns={c: f"{c}_prev" for c in cols_da_prev})
 
-    # outer join: titoli in entrambi, solo N (acquistati), solo N-1 (venduti)
     result = df_n.merge(df_prev, on=merge_on, how="outer")
 
     # Per i titoli venduti (solo N-1): recupera colonne anagrafiche da _prev
@@ -1255,10 +1213,6 @@ def unisci_ship_patrimoniale(df_n: pd.DataFrame,
 
 def unisci_ship_economico(df_eco_n: pd.DataFrame,
                            df_eco_n1: pd.DataFrame) -> pd.DataFrame:
-    """
-    Unisce i due Income SHIP (N e N-1).
-    Chiave: (valuation_area, company_name, portfolio_name, isin) - stessa chiave del patrimoniale.
-    """
     col_data = next((c for c in df_eco_n.columns
                      if c.lower() in ("date to", "dateto", "date_to")), None)
     data_a = _data_sheet(df_eco_n,  col_data) if col_data else None
@@ -1266,7 +1220,6 @@ def unisci_ship_economico(df_eco_n: pd.DataFrame,
     if data_a and data_b and data_b > data_a:
         df_eco_n, df_eco_n1 = df_eco_n1, df_eco_n
 
-    # Stessa chiave del patrimoniale
     chiavi_ship = ["valuation_area", "company_name", "portfolio_name",
                    "security_account_group", "isin"]
     merge_on = [c for c in chiavi_ship
