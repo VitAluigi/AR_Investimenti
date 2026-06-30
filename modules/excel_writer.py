@@ -261,6 +261,7 @@ def genera_excel(dati: dict,
         ("patrimoniale_fv_level", "FV Level", "Asset Class per Fair Value Level"),
         ("oci_per_asset_class", "Riserva OCI", "OCI per Asset Class (IFRS9)"),
         ("composizione_valuation_class", "Valuation Class", "Composizione per Valuation Class"),
+        ("partecipazioni", "Partecipazioni", "Partecipazioni - Book Value e Fair Value N/N-1"),
         ("rating_governativi", "Rating Gov", "Rating – Titoli Governativi"),
         ("rating_non_governativi", "Rating NonGov", "Rating – Titoli Non Governativi"),
         ("geografia_governativi", "Geografia Gov", "Distribuzione Geografica Governativi"),
@@ -278,7 +279,7 @@ def genera_excel(dati: dict,
         ("effetti_det", "Effetti Op Dettaglio","Effetti per Operazione (Nominale + Prezzo)"),
         ("effetti_rie", "Effetti Op Riepilogo","Riepilogo per ISIN (Nominale + Prezzo + Mercato)"),
     ]
-
+    
     for chiave, nome_foglio, nome_analisi in config_fogli:
         if chiave not in dati or dati[chiave] is None:
             continue
