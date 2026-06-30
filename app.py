@@ -8,7 +8,7 @@ import tempfile
 from modules.mapper  import mappa_colonne, applica_mapping, report_mapping
 from modules.analisi import (scopri_analisi, kpi_portafoglio,
                               unisci_ship_patrimoniale, unisci_ship_economico)
-from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco
+from main import leggi_portafoglio, calcola_analisi, genera_output, _merge_ptf_eco, applica_filtri
 from modules.mapper import campi_canonici, salva_mapping_manuale
 
 st.set_page_config(page_title="Report Automatico AR Investimenti", layout="wide")
