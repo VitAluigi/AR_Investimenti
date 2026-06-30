@@ -154,7 +154,6 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 
 # Generazione Workbook
 def _scrivi_foglio_raw(ws, df: pd.DataFrame, titolo: str):
-    """Scrive un foglio raw con header blu e dati senza divisori."""
     ws.sheet_view.showGridLines = False
     n_cols = len(df.columns)
 
