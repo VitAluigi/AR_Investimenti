@@ -19,6 +19,7 @@ from modules.analisi import (scopri_analisi, report_analisi, kpi_portafoglio,
                               confronto_bv_fv, top_operazioni,
                               scadenze_bucket, duration_ponderata, sensitivity_tassi,
                               oci_per_asset_class, composizione_valuation_class,
+                              partecipazioni,
                               analisi_effetti_operazioni,
                               analisi_effetti_inventory, analisi_effetti_tx_top20,
                               unisci_ship_patrimoniale, unisci_ship_economico)
@@ -149,6 +150,9 @@ def calcola_analisi(df: pd.DataFrame,
 
     if disponibili.get("composizione_valuation_class"):
         dati["composizione_valuation_class"] = composizione_valuation_class(df)
+
+    if disponibili.get("partecipazioni"):
+        dati["partecipazioni"] = partecipazioni(df)
 
     if disponibili.get("effetti_inventory"):
         dati["effetti_inventory"] = analisi_effetti_inventory(df)
