@@ -37,6 +37,32 @@ def _flag_partecipazioni(df: pd.DataFrame) -> pd.Series:
 
     return flag
 
+def _etichetta_tipo_partecipazione(df: pd.DataFrame) -> pd.Series:
+    """
+    Etichetta leggibile del tipo di partecipazione per riga:
+    - SOFIA: valore originale di tipo_dettaglio (Altre partecipazioni,
+      Partecipazioni controllate, Partecipazioni collegate)
+    - SHIP: codice SII MICA Account (A16_PARTICIP), valido su N o N-1
+    """
+    etichetta = pd.Series("n.d.", index=df.index)
+
+    if "tipo_dettaglio" in df.columns:
+        mask_sofia = (df["tipo_dettaglio"].astype(str).str.strip().str.lower()
+                      .isin(VALORI_PARTECIPAZIONE_SOFIA))
+        etichetta.loc[mask_sofia] = df.loc[mask_sofia, "tipo_dettaglio"].astype(str).str.strip()
+
+    if "sii_mica_account" in df.columns:
+        mask_ship = (df["sii_mica_account"].astype(str).str.strip()
+                     == CODICE_PARTECIPAZIONE_SHIP)
+        etichetta.loc[mask_ship] = f"Partecipazione ({CODICE_PARTECIPAZIONE_SHIP})"
+
+    if "sii_mica_account_prev" in df.columns:
+        mask_ship_prev = (df["sii_mica_account_prev"].astype(str).str.strip()
+                          == CODICE_PARTECIPAZIONE_SHIP)
+        etichetta.loc[mask_ship_prev & (etichetta == "n.d.")] = f"Partecipazione ({CODICE_PARTECIPAZIONE_SHIP})"
+
+    return etichetta
+
 # 1. Capability Discovery
 def scopri_analisi(df: pd.DataFrame) -> dict:
     colonne = set(df.columns.tolist())
@@ -324,8 +350,9 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
       Partecipazioni collegate}
     - SHIP: sii_mica_account (N o N-1) == 'A16_PARTICIP'
 
-    Mostra ISIN, Descrizione, Asset Class, Book Value N/N-1 (+ Variazione BV),
-    Fair Value N/N-1 (+ Variazione FV).
+    Mostra ISIN, Descrizione, Asset Class, Tipo Partecipazione,
+    Book Value N/N-1 (+ Variazione BV), Fair Value N/N-1 (+ Variazione FV).
+    Ordinata per Tipo Partecipazione e, all'interno, per Book Value decrescente.
     """
     flag = _flag_partecipazioni(df)
     sub = df[flag].copy()
@@ -340,6 +367,8 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
         result["Descrizione"] = sub["descrizione"]
     if "asset_class" in sub.columns:
         result["Asset Class"] = sub["asset_class"]
+
+    result["Tipo Partecipazione"] = _etichetta_tipo_partecipazione(sub)
 
     has_bv = "book_value" in sub.columns
     has_bv_prev = "book_value_prev" in sub.columns
@@ -359,8 +388,12 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
     if has_fv and has_fv_prev:
         result["Variazione FV"] = (result["Fair Value N"] - result["Fair Value N-1"]).round(2)
 
-    sort_col = "Book Value N" if "Book Value N" in result.columns else result.columns[0]
-    result = result.sort_values(sort_col, ascending=False, na_position="last")
+    sort_val_col = "Book Value N" if "Book Value N" in result.columns else None
+    if sort_val_col:
+        result = result.sort_values(["Tipo Partecipazione", sort_val_col],
+                                     ascending=[True, False], na_position="last")
+    else:
+        result = result.sort_values("Tipo Partecipazione", na_position="last")
 
     num_cols = [c for c in ["Book Value N", "Book Value N-1", "Variazione BV",
                              "Fair Value N", "Fair Value N-1", "Variazione FV"]
@@ -369,7 +402,9 @@ def partecipazioni(df: pd.DataFrame) -> pd.DataFrame:
 
     tot = result[num_cols].sum()
     tot[label_col] = "Totale"
+    tot["Tipo Partecipazione"] = ""
     return pd.concat([result, pd.DataFrame([tot])], ignore_index=True)
+
 
     # Pivot: righe = asset_class, colonne = valuation_class
     pivot = df.pivot_table(
