@@ -118,7 +118,7 @@ def _scrivi_foglio_analisi(ws, df: pd.DataFrame,
 
     num_fmt = _num_fmt(divisore)
     for r_idx, row in enumerate(df.itertuples(index=False), 7):
-        is_tot = str(row[0]).strip().lower() == "totale"
+        is_tot = any(str(v).strip().lower() == "totale" for v in row)
         is_last_row = (r_idx == 6 + n_rows)
         ws.row_dimensions[r_idx].height = 12
 
