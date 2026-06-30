@@ -91,17 +91,23 @@ def esegui_mapping(df: pd.DataFrame) -> pd.DataFrame:
 # STEP 3: Calcola analisi
 # ---------------------------------------------------------------------------
 
+def applica_filtri(df: pd.DataFrame, filtri: dict | None) -> pd.DataFrame:
+    """Applica i filtri (valuation_area, company_name, portfolio_name, ...) al DataFrame."""
+    if not filtri:
+        return df
+    for col, valori in filtri.items():
+        if col in df.columns and valori:
+            df = df[df[col].isin(valori)]
+            print(f" -> Filtro '{col}': {valori} → {len(df)} righe")
+    return df
+
+
 def calcola_analisi(df: pd.DataFrame,
                     df_tx: pd.DataFrame | None = None,
                     filtri: dict | None = None) -> dict:
     print(f"[3/5] Calcolo analisi...")
 
-    # Applica filtri se presenti
-    if filtri:
-        for col, valori in filtri.items():
-            if col in df.columns and valori:
-                df = df[df[col].isin(valori)]
-                print(f" -> Filtro '{col}': {valori} → {len(df)} righe")
+    df = applica_filtri(df, filtri)
 
     disponibili = scopri_analisi(df)
     print(report_analisi(disponibili))
