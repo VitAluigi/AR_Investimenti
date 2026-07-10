@@ -30,13 +30,8 @@ SINONIMI = {
     "level": "fair_value_level",
 
     # ---- ASSET CLASS ----
-    "tipo asset sofia": "asset_class",
     "tipologia attivo classe d": "asset_class",
-    "product category name": "asset_class",
-    "asset class": "asset_class",
-    "tipologia": "asset_class",
-    "categoria": "asset_class",
-    "tipo strumento": "asset_class",
+    "product type name": "asset_class",
 
     # ---- TIPO EMITTENTE ----
     "tipo emittente": "tipo_emittente",
