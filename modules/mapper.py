@@ -13,8 +13,6 @@ SINONIMI = {
     # ---- BOOK VALUE (valore contabile N) ----
     "valore carico lc finale": "book_value",
     "valore carico finale": "book_value",
-    "valore carico lc": "book_value",
-    "book value finale": "book_value",
     # SHIP — solo la colonna corretta
     "total book value lc": "book_value",
 
@@ -82,8 +80,6 @@ SINONIMI = {
     "prezzo carico finale": "prezzo_carico",
     "prezzo storico": "prezzo_carico",
     "prezzo carico": "prezzo_carico",
-    "costo medio": "prezzo_carico",
-    "prezzo medio": "prezzo_carico",
 
     # ---- VALORE ACQUISTO ----
     "purchase value lc": "valore_acquisto",
@@ -93,43 +89,20 @@ SINONIMI = {
 
     # ---- CEDOLA / INTERESSI ----
     "competenza lorda cedole lc": "cedola",
-    "rateo cedole lordo lc periodo": "cedola",
-    "cedola/interessi": "cedola",
-    "cedola": "cedola",
-    "interessi": "cedola",
-    "proventi": "cedola",
-    "coupon": "cedola",
     "total current income lc": "cedola",
-
-    # ---- DIVIDENDI ----
-    "dividendi incassati": "dividendi",
-    "dividendi": "dividendi",
-    "dividend": "dividendi",
 
     # ---- PL REALIZZO ----
     "p/m realizzo periodo": "pl_realizzo",
-    "plus realizzo periodo": "pl_realizzo",
-    "minus realizzo periodo": "pl_realizzo",
     "p/l realizzo": "pl_realizzo",
     "pl realizzo": "pl_realizzo",
-    "realizz": "pl_realizzo",
-    "plus/minus real": "pl_realizzo",
     "total extra income lc": "pl_realizzo",
 
     # ---- PL VALUTAZIONE ----
-    "p/m prezzo mercato fine": "pl_valutazione",
-    "plus prezzo mercato fine": "pl_valutazione",
-    "minus prezzo mercato fine": "pl_valutazione",
-    "p/l valutazione": "pl_valutazione",
-    "pl valutazione": "pl_valutazione",
-    "valutat": "pl_valutazione",
-    "plus/minus val": "pl_valutazione",
-    "unrealized": "pl_valutazione",
+    "p/m chiusure lc globali": "pl_valutazione",
     "stock revaluation lc ytd": "pl_valutazione",
 
     # ---- PL TOTALE ----
     "p/m totali lc": "pl_totale_db",
-    "p/m totale lc": "pl_totale_db",
 
     # ---- VALUTA ----
     "valuta": "valuta",
@@ -139,13 +112,10 @@ SINONIMI = {
 
     # ---- SETTORE ----
     "settore": "settore",
-    "sector": "settore",
-    "industria": "settore",
     "issuer industry name": "settore",
 
     # ---- DATE ----
     "data acquisto": "data_acquisto",
-    "data operaz": "data_acquisto",
     "acquisition date": "data_acquisto",
     "scadenza": "scadenza",
     "maturity": "scadenza",
@@ -159,9 +129,6 @@ SINONIMI = {
 
     # ---- OCI ----
     "total oci lc ifrs9": "oci_lc",
-    "total oci pc ifrs9": "oci_pc",
-    "fv oci w/o recycling lc (period)": "oci_no_recycling_lc",
-    "oci lc": "oci_lc",
 
     # ---- ECL / LOSS ----
     "total ecl lc": "ecl_lc",
@@ -173,7 +140,6 @@ SINONIMI = {
     # ---- DURATION ----
     "modified duration": "modified_duration",
     "mod duration": "modified_duration",
-    "mac duration": "modified_duration",
     "convexity": "convexity",
 
     # ---- CAMPI SHIP SPECIFICI ----
