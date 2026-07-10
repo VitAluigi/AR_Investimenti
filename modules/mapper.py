@@ -11,33 +11,18 @@ from modules.ai_client import chiedi_ai
 
 SINONIMI = {
     # ---- BOOK VALUE (valore contabile N) ----
-    # SOFIA
     "valore carico lc finale": "book_value",
     "valore carico finale": "book_value",
     "valore carico lc": "book_value",
     "book value finale": "book_value",
-    # SHIP
+    # SHIP — solo la colonna corretta
     "total book value lc": "book_value",
-    "total book value pc": "book_value",
-    "book value lc": "book_value",
 
     # ---- FAIR VALUE (valore di mercato N) ----
-    # SOFIA
     "valore lc mercato finale": "fair_value",
     "valore mercato finale": "fair_value",
-    # SHIP
+    # SHIP — solo la colonna corretta
     "total market value lc": "fair_value",
-    "total market value pc": "fair_value",
-    "market value lc": "fair_value",
-    # Generici
-    "prezzo finale": "fair_value",
-    "fair value": "fair_value",
-    "valore di mercato": "fair_value",
-    "mtm": "fair_value",
-    "mark to market": "fair_value",
-    "valore corrente": "fair_value",
-    "market value": "fair_value",
-    "controvalore": "fair_value",
 
     # ---- FAIR VALUE LEVEL ----
     "fair value level": "fair_value_level",
@@ -45,13 +30,9 @@ SINONIMI = {
     "level": "fair_value_level",
 
     # ---- ASSET CLASS ----
-    # SOFIA
     "tipo asset sofia": "asset_class",
     "tipologia attivo classe d": "asset_class",
-    # SHIP
     "product category name": "asset_class",
-    "product category": "asset_class",
-    # Generici
     "asset class": "asset_class",
     "tipologia": "asset_class",
     "categoria": "asset_class",
@@ -60,19 +41,19 @@ SINONIMI = {
     # ---- TIPO EMITTENTE ----
     "tipo emittente": "tipo_emittente",
     "issuer type name": "tipo_emittente",
-    "issuer type": "tipo_emittente",
-    "issuer type name": "tipo_emittente",
 
-    # ---- RATING ----
-    "rating s&p": "rating",
-    "rating moody": "rating",
-    "rating fitch": "rating",
-    "merito credito": "rating",
-    "rating": "rating",
+    # ---- RATING (canonico "principale") ----
     "ifrs9 rating": "rating",
-    "axa rating": "rating",
-    "rating issue s&p": "rating",
-    "rating issuer s&p": "rating",
+    "rating": "rating",
+
+    # ---- RATING AGENZIA ----
+    "rating s&p": "rating_agenzia",
+    "rating moody": "rating_agenzia",
+    "rating fitch": "rating_agenzia",
+    "merito credito": "rating_agenzia",
+    "axa rating": "rating_agenzia",
+    "rating issue s&p": "rating_agenzia",
+    "rating issuer s&p": "rating_agenzia",
 
     # ---- PAESE ----
     "paese emittente": "paese",
@@ -81,12 +62,10 @@ SINONIMI = {
     "nazione": "paese",
     "area geografica": "paese",
     "issuer country name": "paese",
-    "issuer country": "paese",
 
     # ---- ISIN ----
     "codice isin": "isin",
-    "isin code": "isin",
-    "isin": "isin",
+    "security id": "isin",
 
     # ---- DESCRIZIONE ----
     "descrizione del titolo": "descrizione",
@@ -104,15 +83,20 @@ SINONIMI = {
     "qtà": "quantita",
     "pezzi": "quantita",
 
-    # ---- PREZZO CARICO ----
+    # ---- PREZZO CARICO (solo SOFIA) ----
     "prezzo carico finale": "prezzo_carico",
     "prezzo storico": "prezzo_carico",
     "prezzo carico": "prezzo_carico",
     "costo medio": "prezzo_carico",
     "prezzo medio": "prezzo_carico",
-    "purchase value lc": "prezzo_carico",
 
-    # ---- CEDOLA / INTERESSI (incluso economico SHIP) ----
+    # ---- VALORE ACQUISTO ----
+    "purchase value lc": "valore_acquisto",
+
+    # ---- MARKET PRICE ----
+    "market price pc": "market_price",
+
+    # ---- CEDOLA / INTERESSI ----
     "competenza lorda cedole lc": "cedola",
     "rateo cedole lordo lc periodo": "cedola",
     "cedola/interessi": "cedola",
@@ -121,7 +105,6 @@ SINONIMI = {
     "proventi": "cedola",
     "coupon": "cedola",
     "total current income lc": "cedola",
-    "current income lc": "cedola",
 
     # ---- DIVIDENDI ----
     "dividendi incassati": "dividendi",
@@ -137,8 +120,6 @@ SINONIMI = {
     "realizz": "pl_realizzo",
     "plus/minus real": "pl_realizzo",
     "total extra income lc": "pl_realizzo",
-    "total realised gain loss lc":"pl_realizzo",
-    "realised gain loss security lc": "pl_realizzo",
 
     # ---- PL VALUTAZIONE ----
     "p/m prezzo mercato fine": "pl_valutazione",
@@ -150,7 +131,6 @@ SINONIMI = {
     "plus/minus val": "pl_valutazione",
     "unrealized": "pl_valutazione",
     "stock revaluation lc ytd": "pl_valutazione",
-    "stock revaluation lc total": "pl_valutazione",
 
     # ---- PL TOTALE ----
     "p/m totali lc": "pl_totale_db",
@@ -161,14 +141,12 @@ SINONIMI = {
     "currency": "valuta",
     "divisa": "valuta",
     "position currency": "valuta",
-    "issue currency": "valuta",
 
     # ---- SETTORE ----
     "settore": "settore",
     "sector": "settore",
     "industria": "settore",
     "issuer industry name": "settore",
-    "issuer industry": "settore",
 
     # ---- DATE ----
     "data acquisto": "data_acquisto",
@@ -176,7 +154,7 @@ SINONIMI = {
     "acquisition date": "data_acquisto",
     "scadenza": "scadenza",
     "maturity": "scadenza",
-    "final due date": "scadenza",
+    "maturity date ifrs9": "scadenza",
 
     # ---- PESO ----
     "peso": "peso_ptf",
@@ -184,41 +162,35 @@ SINONIMI = {
     "% ptf": "peso_ptf",
     "weight": "peso_ptf",
 
-    # ---- OCI (SHIP IFRS9 — da Inventory/patrimoniale) ----
+    # ---- OCI ----
     "total oci lc ifrs9": "oci_lc",
-    "total oci lc": "oci_lc",
     "total oci pc ifrs9": "oci_pc",
     "fv oci w/o recycling lc (period)": "oci_no_recycling_lc",
     "oci lc": "oci_lc",
 
-    # ---- ECL / LOSS ALLOWANCE ----
+    # ---- ECL / LOSS ----
     "total ecl lc": "ecl_lc",
     "loss allowance lc": "loss_allowance_lc",
     "w/b loss allowance lc": "wb_loss_allowance_lc",
     "w/b impairments lc ytd": "wb_impairments_lc",
     "impairments lc": "impairments_lc",
 
-    # ---- DURATION (SHIP) ----
+    # ---- DURATION ----
     "modified duration": "modified_duration",
     "mod duration": "modified_duration",
-    "mac duration": "mac_duration",
+    "mac duration": "modified_duration",
     "convexity": "convexity",
 
     # ---- CAMPI SHIP SPECIFICI ----
     "valuation area name": "valuation_area",
     "company code name": "company_name",
-    "company name": "company_name",
     "portfolio name": "portfolio_name",
     "valuation class name": "valuation_class",
     "bond classification name": "bond_classification",
     "security account group name": "security_account_group",
-    "account group name": "security_account_group",
-    "seg. account": "security_account_group",
 
     # ---- PARTECIPAZIONI ----
-    # SOFIA: colonna "Tipo" (dettaglio classificazione, distinta da asset_class)
     "tipo": "tipo_dettaglio",
-    # SHIP: colonna "SII MICA Account" (codice A16_PARTICIP = partecipazione)
     "sii mica account": "sii_mica_account",
 }
 
